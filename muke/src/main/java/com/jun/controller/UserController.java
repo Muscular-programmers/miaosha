@@ -81,12 +81,15 @@ public class UserController extends BaseController {
      */
     @RequestMapping(value = "/register",consumes = {CONTENT_TYPE_FORMED})
     @ResponseBody
-    public Object register(UserModel userModel,@RequestParam(name = "otpCode")String otpCode) throws BusinessException {
+    public Object register(UserModel userModel,@RequestParam(name = "otpCode")String optCode) throws BusinessException {
         //验证输入验证码是否正确
-        String sessionOtpCode = (String) httpRequest.getSession().getAttribute(userModel.getTelephone());
+        /*String sessionOtpCode = (String) httpRequest.getSession().getAttribute(userModel.getTelephone());
         if(!StringUtils.equals(sessionOtpCode,otpCode)){
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"验证码错误");
-        }
+        }*/
+
+        userService.checkOpt(userModel.getTelephone(), optCode);
+
         //执行注册操作
         userService.register(userModel);
 
@@ -102,14 +105,18 @@ public class UserController extends BaseController {
         number += 1000;
         String opt = String.valueOf(number);
 
+        //将生成的验证码保存到redis，并设置过期时间
+        userService.saveOpt(telephone,opt);
+
         //与手机号码绑定（手机号与验证码绑定以键值对的形式绑定，适合与redis，此处只用httpSession模拟）
-        httpRequest.getSession().setAttribute(telephone,opt);
+        //httpRequest.getSession().setAttribute(telephone,opt);
         System.out.println("手机号："+telephone+"，验证码为："+opt);
 
         //通过短信通道发送给用户（省略）
 
         return CommonReturnType.create(null);
     }
+
 
     @RequestMapping(value = "/get")
     public CommonReturnType getUser(@RequestParam(name="id") Integer id) throws BusinessException {

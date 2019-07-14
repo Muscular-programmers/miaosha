@@ -40,6 +40,24 @@ public class ItemController extends BaseController {
     @Autowired
     private ItemService itemService;
 
+
+    /**
+     * 通过分类查找
+     */
+    @RequestMapping("/findByCategory")
+    @ResponseBody
+    public Object findByCategory(@RequestParam(name = "categoryId")Integer categoryId){
+        List<ItemModel> itemModels = itemService.getByCategory(categoryId);
+
+        //将List<ItemModel>转化为List<ItemVo>
+        List<ItemVo> itemVoList = itemModels.stream().map(itemModel -> {
+            ItemVo itemVo = convertToItemVO(itemModel);
+            return itemVo;
+        }).collect(Collectors.toList());
+
+        return CommonReturnType.create(itemVoList);
+    }
+
     /**
      *
      * @return

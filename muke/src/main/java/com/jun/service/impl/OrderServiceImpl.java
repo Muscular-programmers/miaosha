@@ -10,6 +10,7 @@
  */
 package com.jun.service.impl;
 
+import com.jun.dao.ItemMapper;
 import com.jun.dao.OrderMapper;
 import com.jun.dao.SequenceMapper;
 import com.jun.error.BusinessException;
@@ -21,6 +22,7 @@ import com.jun.service.OrderService;
 import com.jun.service.UserService;
 import com.jun.service.model.ItemModel;
 import com.jun.service.model.OrderModel;
+import org.joda.time.DateTime;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * 〈一句话功能简述〉<br> 
@@ -91,6 +96,12 @@ public class OrderServiceImpl implements OrderService {
         orderModel.setUserId(userId);
         orderModel.setPromoId(promoId);
         orderModel.setAmount(amount);
+        //得到当前时间
+        Date date = new Date();
+        System.out.println(date);
+        DateTime now = new DateTime(date.getTime());//2013-01-14 22:45:36.484
+        System.out.println(now);
+        orderModel.setOrderTime(now);
 
         //如果活动正在进行，应该使价格为活动价格
         if(promoId != null){
@@ -103,6 +114,8 @@ public class OrderServiceImpl implements OrderService {
 
         //交易流水号，生成id
         orderModel.setId(generateOrderNo());
+
+        //bean转换
         Order order = convertToOrder(orderModel);
 
         orderMapper.insertSelective(order);
@@ -115,6 +128,24 @@ public class OrderServiceImpl implements OrderService {
 
         //返回前端
         return orderModel;
+    }
+
+    /**
+     * 查询所有订单
+     * @return
+     */
+    public List<OrderModel> getList() {
+        //查询订单信息
+        List<Order> orders = orderMapper.selectAll();
+
+        List<OrderModel> orderModels = new ArrayList<>();
+        for (Order order : orders) {
+            ItemModel nameAndPromo = itemService.getNameAndPromo(order.getItemId());
+            OrderModel orderModel = convertToOrderModel(order, nameAndPromo);
+            orderModels.add(orderModel);
+        }
+
+        return orderModels;
     }
 
 
@@ -165,8 +196,55 @@ public class OrderServiceImpl implements OrderService {
         BeanUtils.copyProperties(orderModel,order);
         order.setItemPrice(orderModel.getItemPrice().doubleValue());
         order.setOrderPrice(orderModel.getOrderPrice().doubleValue());
+        order.setOrderTime(orderModel.getOrderTime().toDate());
 
         return order;
+    }
+
+    /**
+     * bean转换
+     * @param order
+     * @return
+     */
+    private OrderModel convertToOrderModel(Order order){
+        if(order == null)
+            return null;
+        OrderModel orderModel = new OrderModel();
+
+        BeanUtils.copyProperties(order,orderModel);
+
+        orderModel.setItemPrice(BigDecimal.valueOf(order.getItemPrice()));
+        orderModel.setOrderPrice(BigDecimal.valueOf(order.getOrderPrice()));
+
+        return orderModel;
+    }
+
+    /**
+     * bean转换
+     * @param order
+     * @return
+     */
+    private OrderModel convertToOrderModel(Order order,ItemModel itemModel){
+        if(order == null || itemModel == null)
+            return null;
+        OrderModel orderModel = new OrderModel();
+
+        BeanUtils.copyProperties(order,orderModel);
+
+        orderModel.setItemPrice(BigDecimal.valueOf(order.getItemPrice()));
+        orderModel.setOrderPrice(BigDecimal.valueOf(order.getOrderPrice()));
+
+        //设置下单时间
+        orderModel.setOrderTime(new DateTime(order.getOrderTime()));
+
+        //设置名称和活动状态
+        if(itemModel.getPromoModel() != null)
+            orderModel.setStatus(itemModel.getPromoModel().getStatus());
+        else
+            orderModel.setStatus(0);
+        orderModel.setTitle(itemModel.getTitle());
+
+        return orderModel;
     }
 }
 

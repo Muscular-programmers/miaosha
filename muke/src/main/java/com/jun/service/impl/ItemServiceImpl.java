@@ -84,13 +84,20 @@ public class ItemServiceImpl implements ItemService {
      */
     public List<ItemModel> getList() {
         List<Item> itemList = itemMapper.selectList();
-        List<ItemModel> itemModelList = itemList.stream().map(item -> {
-            ItemStock stock = stockMapper.selectByItemId(item.getId());
-            ItemModel itemModel = convertToItemModel(item, stock);
-            return itemModel;
-        }).collect(Collectors.toList());
+        List<ItemModel> itemModelList = converToItemModelList(itemList);
 
         return itemModelList;
+    }
+
+    /**
+     * 通过分类查找
+     * @return
+     */
+    public List<ItemModel> getByCategory(Integer categoryId) {
+        List<Item> itemList = itemMapper.selectByCategory(categoryId);
+        List<ItemModel> itemModelList = converToItemModelList(itemList);
+        return itemModelList;
+
     }
 
     /**
@@ -112,6 +119,31 @@ public class ItemServiceImpl implements ItemService {
 
         //得到商品相应的活动
         PromoModel promoModel = promoService.getPromoByItemId(itemModel.getId());
+        //表示存在还未结束的活动
+        if(promoModel != null && promoModel.getStatus() != 3){
+            itemModel.setPromoModel(promoModel);
+        }
+
+        return itemModel;
+
+    }
+
+    /**
+     * 得到名称和活动（订单展示）
+     * @param id
+     * @return
+     */
+    public ItemModel getNameAndPromo(Integer id) {
+        Item item = itemMapper.selectByPrimaryKey(id);
+        if(item == null){
+            return null;
+        }
+
+        //转换相应的bean
+        ItemModel itemModel = convertToItemModel(item);
+
+        //得到商品相应的活动
+        PromoModel promoModel = promoService.getPromoByItemId(id);
         //表示存在还未结束的活动
         if(promoModel != null && promoModel.getStatus() != 3){
             itemModel.setPromoModel(promoModel);
@@ -181,6 +213,22 @@ public class ItemServiceImpl implements ItemService {
     /**
      * bean转换
      * @param item
+     * @param item
+     * @return
+     */
+    private ItemModel convertToItemModel(Item item){
+        if(item == null){
+            return null;
+        }
+        ItemModel itemModel = new ItemModel();
+        BeanUtils.copyProperties(item,itemModel);
+        itemModel.setPrice(new BigDecimal(item.getPrice()));
+        return itemModel;
+    }
+
+    /**
+     * bean转换
+     * @param item
      * @param itemStock
      * @return
      */
@@ -193,6 +241,25 @@ public class ItemServiceImpl implements ItemService {
         itemModel.setPrice(new BigDecimal(item.getPrice()));
         itemModel.setStock(itemStock.getStock());
         return itemModel;
+    }
+
+    /**
+     *
+     */
+    private List<ItemModel> converToItemModelList(List<Item> itemList){
+        List<ItemModel> itemModelList = itemList.stream().map(item -> {
+            ItemStock stock = stockMapper.selectByItemId(item.getId());
+            ItemModel itemModel = convertToItemModel(item, stock);
+            //得到商品相应的活动
+            PromoModel promoModel = promoService.getPromoByItemId(itemModel.getId());
+            //表示存在还未结束的活动
+            if(promoModel != null && promoModel.getStatus() != 3){
+                itemModel.setPromoModel(promoModel);
+            }
+            return itemModel;
+        }).collect(Collectors.toList());
+
+        return itemModelList;
     }
 }
 

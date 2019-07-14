@@ -13,6 +13,8 @@ package com.jun.service;
 import com.jun.error.BusinessException;
 import com.jun.service.model.OrderModel;
 
+import java.util.List;
+
 /**
  * 〈一句话功能简述〉<br> 
  * 〈〉
@@ -24,4 +26,7 @@ import com.jun.service.model.OrderModel;
 public interface OrderService {
 
     OrderModel createOrder(Integer userId,Integer itemId,Integer promoId, Integer amount) throws BusinessException;
+
+    //查询所有订单
+    List<OrderModel> getList();
 }

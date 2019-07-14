@@ -10,6 +10,7 @@
  */
 package com.jun.service.impl;
 
+import ch.qos.logback.core.util.TimeUtil;
 import com.jun.dao.UserMapper;
 import com.jun.dao.UserPasswordMapper;
 import com.jun.error.BusinessException;
@@ -23,8 +24,11 @@ import com.jun.validation.ValidatorImpl;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * 〈一句话功能简述〉<br>
@@ -46,6 +50,10 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private ValidatorImpl validator;
+
+    @Autowired
+    StringRedisTemplate stringRedisTemplate;
+
     /**
      * 通过uid查询
      * @param id
@@ -114,6 +122,31 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(EmBusinessError.USER_NOT_EXIST,"用户手机号或密码错误！");
         }
         return userModel;
+    }
+
+    /**
+     * 保存验证码到redis
+     * @param opt
+     */
+    public void saveOpt(String phone,String opt) {
+        //保存到redis并设置60s的过期时间
+        stringRedisTemplate.opsForValue().set(phone,opt,60, TimeUnit.SECONDS);
+    }
+
+    /**
+     * 校验验证码
+     * @param phone
+     * @param opt
+     * @return
+     */
+    public boolean checkOpt(String phone, String opt) throws BusinessException {
+        String number = stringRedisTemplate.opsForValue().get(phone);
+        if(number == null){
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"验证码过期，请重新获取");
+        } else if (!StringUtils.equals(number, opt)) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"验证码错误");
+        }
+        return true;
     }
 
     /**

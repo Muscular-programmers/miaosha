@@ -22,7 +22,7 @@ public enum EmBusinessError implements CommonError {
     //通用错误类型
     PARAMETER_VALIDATION_ERROR(10001,"参数不合法"),
 
-    //位置错误
+    //未知错误
     UNKNOWN_ERROR(10002,"未知错误"),
 
     //10000开头为用户相关错误

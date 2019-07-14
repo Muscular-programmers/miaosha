@@ -28,4 +28,9 @@ public interface UserService {
     void register(UserModel userModel) throws BusinessException;
 
     UserModel validataLogin(String telephone,String password) throws BusinessException;
+
+    //保存验证码
+    void saveOpt(String phone,String opt);
+
+    boolean checkOpt(String phone,String opt) throws BusinessException;
 }

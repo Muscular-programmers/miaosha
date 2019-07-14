@@ -11,6 +11,7 @@
 package com.jun.service;
 
 import com.jun.error.BusinessException;
+import com.jun.pojo.Item;
 import com.jun.service.model.ItemModel;
 
 import java.util.List;
@@ -30,8 +31,14 @@ public interface ItemService {
     //浏览商品
     List<ItemModel> getList();
 
+    //通过分类查找查找商品
+    List<ItemModel> getByCategory(Integer categoryId);
+
     //查看商品详情
     ItemModel getById(Integer id);
+
+    //得到名称和活动（订单调用）
+    ItemModel getNameAndPromo(Integer id);
 
     //更新库存
     boolean decreaseStock(Integer itemId,Integer amount);

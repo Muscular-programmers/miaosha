@@ -86,7 +86,7 @@ function getParam(paramName) {
 		//获取商品详情
 		$.ajax({
 			type:"GET",
-			url:"http://localhost:8090/item/get",
+			url:"http://localhost:8090/miaosha/item/get",
 			data:{
 				"id":getParam("id")
 			},
@@ -111,7 +111,7 @@ function getParam(paramName) {
 			$.ajax({
 				type:"POST",
 				contentType:"application/x-www-form-urlencoded",
-				url:"http://localhost:8090/order/create",
+				url:"http://localhost:8090/miaosha/order/create",
 				data:{
 					"itemId":g_itemVo.id,
 					"amount":1,
@@ -126,7 +126,7 @@ function getParam(paramName) {
 					}else{
 						alert("下单失败，原因："+data.data.errMsg);
 						if(data.data.errCode == 20002){
-							window.location.href="login.html";
+							window.location.href="login-1.html";
 						}
 					}
 				},
