@@ -50,8 +50,8 @@
         </javaClientGenerator>
 
         <!-- 配置表信息 -->
-        <table schema="${jdbc_user}" tableName="category"
-               domainObjectName="Category" enableCountByExample="false"
+        <table schema="${jdbc_user}" tableName="cart"
+               domainObjectName="Cart" enableCountByExample="false"
                enableDeleteByExample="false" enableSelectByExample="false"
                enableUpdateByExample="false">
             <!-- schema即为数据库名 tableName为对应的数据库表 domainObjectName是要生成的实体类 enable*ByExample

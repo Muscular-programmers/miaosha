@@ -19,6 +19,7 @@ import com.jun.service.model.UserModel;
 import com.jun.service.UserService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import sun.misc.BASE64Encoder;
 
@@ -37,7 +38,7 @@ import java.util.Random;
  * @since 1.0.0
  */
 
-@RestController
+@Controller
 @RequestMapping("/user")
 @CrossOrigin(allowCredentials = "true",allowedHeaders = "*")//解决跨域请求报错的问题 视频3-8
 public class UserController extends BaseController {
@@ -47,6 +48,14 @@ public class UserController extends BaseController {
 
     @Autowired
     private HttpServletRequest httpRequest;
+
+    /**
+     * 测试
+     */
+    @RequestMapping("/getopt")
+    public String getopt(){
+        return "getopt";
+    }
 
 
     /**
