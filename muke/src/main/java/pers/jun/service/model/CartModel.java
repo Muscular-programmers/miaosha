@@ -1,0 +1,51 @@
+/**
+ * Copyright (C), 2015-2019, XXX有限公司
+ * FileName: CartModel
+ * Author:   俊哥
+ * Date:     2019/7/14 20:01
+ * Description:
+ * History:
+ * <author>          <time>          <version>          <desc>
+ * 作者姓名           修改时间           版本号              描述
+ */
+package pers.jun.service.model;
+
+import lombok.Data;
+import pers.jun.pojo.Item;
+
+/**
+ * 〈一句话功能简述〉<br> 
+ * 〈〉
+ *
+ * @author 俊哥
+ * @create 2019/7/14
+ * @since 1.0.0
+ */
+@Data
+public class CartModel {
+
+    /**
+    id
+    */
+    private Integer id;
+
+    /**
+    购物车商品
+    */
+    private Item item;
+
+    /**
+    商品数量
+    */
+    private Integer amount;
+
+    /**
+    所属用户id
+    */
+    private Integer userId;
+
+    //使用聚合模型，表示商品活动，如果不为空，则表示商品存在还未结束的活动
+    private PromoModel promoModel;
+
+}
+

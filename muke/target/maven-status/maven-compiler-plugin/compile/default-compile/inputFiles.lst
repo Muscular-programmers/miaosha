@@ -28,6 +28,7 @@ D:\Java\idea\muke\muke\src\main\java\com\jun\validation\ValidationResult.java
 D:\Java\idea\muke\muke\src\main\java\com\jun\service\impl\ItemServiceImpl.java
 D:\Java\idea\muke\muke\src\main\java\com\jun\dao\SequenceMapper.java
 D:\Java\idea\muke\muke\src\main\java\com\jun\error\CommonError.java
+D:\Java\idea\muke\muke\src\main\java\com\jun\error\GlobalExceptionHandler.java
 D:\Java\idea\muke\muke\src\main\java\com\jun\service\impl\UserServiceImpl.java
 D:\Java\idea\muke\muke\src\main\java\com\jun\controller\CategoryController.java
 D:\Java\idea\muke\muke\src\main\java\com\jun\pojo\Sequence.java
