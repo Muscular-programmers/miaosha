@@ -73,7 +73,7 @@ public class ItemController extends BaseController {
     /**
      * 获取所有商品
      */
-    @PostMapping(value = "/list")
+    @GetMapping(value = "/list")
     @ApiOperation(value = "获取所有商品")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "key",value = "搜索关键字",paramType = "query"),
@@ -81,9 +81,9 @@ public class ItemController extends BaseController {
             @ApiImplicitParam(name = "size",value = "分页中每页显示数据",paramType = "query"),
             @ApiImplicitParam(name = "sort",value = "排序方式",paramType = "query"),
             @ApiImplicitParam(name = "priceGt",value = "按价格筛选最低价",paramType = "query"),
-            @ApiImplicitParam(name = "priceLte",value = "按价格筛选最高价",paramType = "query"),
+            @ApiImplicitParam(name = "priceLte",value = "按价格筛选最高价",paramType = "query")
     })
-    public Object itemList(@RequestParam(name = "key",required = false) String key,
+    public CommonReturnType itemList(@RequestParam(name = "key",required = false) String key,
                            @RequestParam(name = "page",required = false) String page,
                            @RequestParam(name = "size",required = false) String size,
                            @RequestParam(name = "sort",required = false) String sort,
@@ -141,7 +141,7 @@ public class ItemController extends BaseController {
     /**
      * 创建商品
      */
-    @PostMapping(value = "/create",consumes = {CONTENT_TYPE_FORMED})
+    @PostMapping(value = "/create")
     @ApiOperation(value = "创建商品")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "itemModel",value = "商品信息",required = true,paramType = "query")

@@ -22,6 +22,7 @@ import pers.jun.pojo.Item;
 import pers.jun.pojo.OrderItem;
 import pers.jun.service.model.OrderItemModel;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,6 +56,9 @@ public class OrderItemServiceImpl implements OrderItemService {
         return orderItems;
     }
 
+    /**
+     * bean转换
+     */
     private List<OrderItemVo> convertToVoList(List<OrderItem> orderItems) {
         if(orderItems == null)
             return null;
@@ -70,6 +74,7 @@ public class OrderItemServiceImpl implements OrderItemService {
             return null;
         OrderItemVo itemVo = new OrderItemVo();
         BeanUtils.copyProperties(orderItem,itemVo);
+        itemVo.setPrice(new BigDecimal(orderItem.getPrice()));
         Item item = itemMapper.selectByPrimaryKey(orderItem.getItemId());
         itemVo.setImgUrl(item.getImgUrl());
         itemVo.setTitle(item.getTitle());
@@ -84,6 +89,7 @@ public class OrderItemServiceImpl implements OrderItemService {
             return null;
         OrderItemModel orderItemModel = new OrderItemModel();
         BeanUtils.copyProperties(orderItem,orderItemModel);
+        orderItemModel.setPrice(new BigDecimal(orderItem.getPrice()));
         return orderItemModel;
     }
 

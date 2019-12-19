@@ -68,7 +68,7 @@ public class ItemVo {
     private String endDate;
 
     //前端需要
-    //private int limitNum = 100;
+    private int limitNum = 10;
 
 
 }

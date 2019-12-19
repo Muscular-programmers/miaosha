@@ -106,7 +106,6 @@ public class AuthenticationInterceptor implements HandlerInterceptor  {
             }
             //token验证成功之后将用户赋值给全局变量用于其他类获取
             userModelByToken = userById;
-            //System.out.println(userModelByToken.toString());
             return true;
         }
         return true;

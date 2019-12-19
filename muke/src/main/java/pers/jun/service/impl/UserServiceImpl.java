@@ -68,16 +68,13 @@ public class UserServiceImpl implements UserService {
 
     /**
      * 注册
-     * @param userModel
      */
     @Transactional
     public void register(UserModel userModel) throws BusinessException {
         //参数校验
         if(userModel == null){
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
-
         }
-
         ValidationResult result = validator.validate(userModel);
         if(result.isHasErr()){
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,result.getErrMsg());
@@ -90,20 +87,16 @@ public class UserServiceImpl implements UserService {
         } catch (Exception e) {
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"手机号重复注册！");
         }
-
         userModel.setId(user.getId());
 
         //插入到密码表
         UserPassword password = convertpassFromUsermodel(userModel);
         passwordMapper.insertSelective(password);
-
         return;
     }
 
     /**
      * 验证登录
-     * @param telephone
-     * @param password
      */
     public UserModel validataLogin(String telephone, String password) throws BusinessException {
         //根据用户电话拿到用户信息

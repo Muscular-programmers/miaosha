@@ -74,7 +74,6 @@ public class CartController extends BaseController{
         Integer userId = userModel.getId();
         cartService.addCart(cartVo.getItemId(),cartVo.getAmount(),userId);
         return CommonReturnType.create(null);
-
     }
 
     /**
@@ -88,7 +87,6 @@ public class CartController extends BaseController{
         UserModel userModel = checkUserLogin();
         Integer userId = userModel.getId();
         List<CartModel> cartModels = cartService.selectAll(userId);
-
         List<CartVo> cartVos = convertToCartVoList(cartModels);
         return CommonReturnType.create(cartVos);
     }

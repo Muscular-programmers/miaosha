@@ -109,10 +109,19 @@
     where id = #{id,jdbcType=INTEGER}
   </update>
 
-    <update id="updateByItemId">
+    <!--<update id="updateByItemId">
         update item_stock
         set stock = stock - #{amount}
         where item_id = #{itemId} and stock >= #{amount}
-    </update>
+    </update>-->
 
+  <update id="updateByItemId"  parameterType="java.util.List">
+    <foreach collection="list" item="item" index="index" open="" close="" separator=";">
+      update item_stock
+      <set>
+        stock = stock + #{item.amount}
+      </set>
+      where item_id = #{item.itemId} and stock >= #{item.amount}
+    </foreach>
+  </update>
 </mapper>

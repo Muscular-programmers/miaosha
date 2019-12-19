@@ -164,6 +164,25 @@
     on oi.item_id = item.id) r
     on o.id = r.order_id
     where o.user_id = #{userId}
+    limit
+  </select>
+
+  <select id="getOrderAndDetail" parameterType="string" resultMap="OrderAndDetail">
+    <!--select-->
+    <!--<include refid="Base_Column_List" />-->
+    <!--from `order`-->
+    <!--where user_id = #{userId,jdbcType=VARCHAR}-->
+
+    select o.*,r.*
+    from `order` o
+    left join
+    (
+    select oi.*,item.title,item.img_url
+    from order_item oi
+    left join item
+    on oi.item_id = item.id) r
+    on o.id = r.order_id
+    where o.id = #{orderId}
   </select>
 
   <resultMap id="OrderAndDetail" type="pers.jun.service.model.OrderModel" extends="BaseResultMap">

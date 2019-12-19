@@ -11,6 +11,7 @@
 package pers.jun.service.impl;
 
 import com.sun.tools.corba.se.idl.constExpr.Or;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.format.DateTimeFormat;
 import pers.jun.dao.OrderMapper;
 import pers.jun.dao.SequenceMapper;
@@ -93,14 +94,14 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"添加订单未知错误");
 
         // 3.减库存 AND 添加订单item AND 更新商品销量 AND 从购物车删除
-        //List<OrderItem> orderItems = orderModel.getOrderItems();
         List<OrderItemModel> orderItemModels = orderModel.getOrderItems();
+
+        // 3.减库存
+        boolean decreaseResult = itemService.decreaseStock(orderItemModels);
+        if(!decreaseResult)
+            throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
+
         for (OrderItemModel orderItem : orderItemModels) {
-            // 落单减库存/还有一种方式为支付减库存
-            boolean decreaseStock = itemService.decreaseStock(orderItem.getItemId(),orderItem.getAmount());
-            if(!decreaseStock){
-                throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
-            }
             // 设置所属订单id
             orderItem.setOrderId(generateOrderNo);
             // 根据商品id得到商品，判断商品是否处于活动当中
@@ -109,8 +110,9 @@ public class OrderServiceImpl implements OrderService {
                 // 设置商品活动id
                 orderItem.setPromoId(itemModel.getPromoModel().getId());
                 // 设置商品活动价格
-                orderItem.setPrice(itemModel.getPrice().doubleValue());
+                orderItem.setPrice(itemModel.getPrice());
             }
+            // 4.添加订单item
             int result = orderItemService.insertOrderItem(converrToOrderItem(orderItem));
             if(result < 1)
                 throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"添加订单商品未知错误");
@@ -199,9 +201,11 @@ public class OrderServiceImpl implements OrderService {
     /**
      * 查询所有订单
      */
-    public List<OrderModel> getList(Integer userId) {
+    public List<OrderModel> getList(Integer userId,Integer page,Integer size) throws BusinessException {
+        if(page == null || size == null)
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"分页参数不合法");
         //查询订单信息
-        List<OrderModel> orders = orderMapper.selectAll(userId);
+        List<OrderModel> orders = orderMapper.selectAll(userId,page,size);
         // 关于图片，只要第一张
         for (OrderModel order : orders) {
             List<OrderItemModel> orderItems = order.getOrderItems();
@@ -223,6 +227,27 @@ public class OrderServiceImpl implements OrderService {
         //}
         //
         //return orderModels;
+    }
+
+    /**
+     * 根据id查询id
+     */
+    public OrderModel orderById(String orderId) throws BusinessException {
+        if(StringUtils.isBlank(orderId))
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        OrderModel orderAndDetail = orderMapper.getOrderAndDetail(orderId);
+        return orderAndDetail;
+    }
+
+    /**
+     * 删除订单
+     */
+    public void delOrder(String orderId) throws BusinessException {
+        if(StringUtils.isBlank(orderId))
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        int result = orderMapper.deleteByPrimaryKey(orderId);
+        if(result < 1)
+            throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR);
     }
 
 
@@ -290,18 +315,7 @@ public class OrderServiceImpl implements OrderService {
             return null;
         OrderModel orderModel = new OrderModel();
         BeanUtils.copyProperties(order,orderModel);
-        // 设置价格
-        orderModel.setTotalPrice(order.getTotalPrice());
         return orderModel;
-    }
-    private List<OrderModel> convertToOrderModelList(List<Order> orders){
-        if(orders == null)
-            return null;
-        List<OrderModel> orderModels = new ArrayList<>();
-        for (Order order : orders) {
-            orderModels.add(convertToOrderModel(order));
-        }
-        return orderModels;
     }
 
     private OrderItem converrToOrderItem(OrderItemModel orderItemModel) {
@@ -309,6 +323,7 @@ public class OrderServiceImpl implements OrderService {
             return null;
         OrderItem orderItem = new OrderItem();
         BeanUtils.copyProperties(orderItemModel,orderItem);
+        orderItem.setPrice(orderItemModel.getPrice().doubleValue());
         return orderItem;
     }
 

@@ -27,6 +27,12 @@ public interface OrderService {
 
     OrderModel createOrder(OrderModel orderModel) throws BusinessException;
 
-    //查询所有订单
-    List<OrderModel> getList(Integer userId);
+    // 查询所有订单
+    List<OrderModel> getList(Integer userId,Integer page,Integer size) throws BusinessException;
+
+    // 根据id查询订单
+    OrderModel orderById(String orderId) throws BusinessException;
+
+    // 删除订单
+    void delOrder(String orderId) throws BusinessException;
 }

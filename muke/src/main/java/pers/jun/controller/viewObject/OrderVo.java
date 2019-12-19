@@ -12,7 +12,9 @@ package pers.jun.controller.viewObject;
 
 import lombok.Data;
 import org.joda.time.DateTime;
+import pers.jun.pojo.Address;
 import pers.jun.pojo.OrderItem;
+import pers.jun.service.model.AddressModel;
 import pers.jun.service.model.OrderItemModel;
 
 import java.math.BigDecimal;
@@ -48,8 +50,8 @@ public class OrderVo {
     //订单状态 1表示已付款 2表示已发货 3表示收获 4表示已售后退货 5表示完成 默认为0
     private Integer status = 0;
 
-    //订单地址id
-    private Integer address;
+    //订单地址
+    private AddressModel address;
 
     ////下单数量
     //private Integer amount;

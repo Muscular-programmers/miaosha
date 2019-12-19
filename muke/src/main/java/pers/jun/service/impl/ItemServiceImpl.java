@@ -23,6 +23,7 @@ import pers.jun.pojo.ItemStock;
 import pers.jun.service.ItemService;
 import pers.jun.service.PromoService;
 import pers.jun.service.model.ItemModel;
+import pers.jun.service.model.OrderItemModel;
 import pers.jun.service.model.PromoModel;
 import pers.jun.validation.ValidationResult;
 import pers.jun.validation.ValidatorImpl;
@@ -162,16 +163,23 @@ public class ItemServiceImpl implements ItemService {
 
     /**
      * 通过商品id更新stock
-     * @param itemId
-     * @param amount
-     * @return
      */
+    //@Transactional
+    //public boolean decreaseStock(Integer itemId, Integer amount) {
+    //    int affectLine = stockMapper.updateByItemId(itemId, amount);
+    //    if(affectLine > 0)
+    //        return true;
+    //    return false;
+    //}
+
+    @Override
     @Transactional
-    public boolean decreaseStock(Integer itemId, Integer amount) {
-        int affectLine = stockMapper.updateByItemId(itemId, amount);
+    public boolean decreaseStock(List<OrderItemModel> orderItemModels) {
+        int affectLine = stockMapper.updateByItemId(orderItemModels);
         if(affectLine > 0)
             return true;
         return false;
+
     }
 
     /**

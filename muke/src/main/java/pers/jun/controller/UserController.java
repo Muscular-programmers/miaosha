@@ -88,24 +88,19 @@ public class UserController extends BaseController {
     /**
      *用户注册
      */
-    @PostMapping(value = "/register",consumes = {CONTENT_TYPE_FORMED})
+    @PostMapping(value = "/register")
     @ApiOperation(value = "用户注册")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "userModel",value = "用户信息",required = true,paramType = "query"),
-            @ApiImplicitParam(name = "otpCode",value = "验证码",required = true,paramType = "query")
-    })
-    public Object register(UserModel userModel,@RequestParam(name = "otpCode")String optCode) throws BusinessException {
+    public CommonReturnType register(@RequestBody UserModel userModel) throws BusinessException {
         //验证输入验证码是否正确
         /*String sessionOtpCode = (String) httpRequest.getSession().getAttribute(userModel.getTelephone());
         if(!StringUtils.equals(sessionOtpCode,otpCode)){
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"验证码错误");
         }*/
 
-        userService.checkOpt(userModel.getTelephone(), optCode);
-
-        //执行注册操作
+        if(userModel == null)
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"用户信息不能为空");
+        // 执行注册操作
         userService.register(userModel);
-
         return CommonReturnType.create(null);
     }
 
@@ -179,7 +174,7 @@ public class UserController extends BaseController {
      * 验证滑块
      * @return
      */
-    @PostMapping(value = "/geetestInit")
+    @GetMapping(value = "/geetestInit")
     @ApiOperation(value = "验证滑块")
     public Object geetestInit() {
         HashMap<String,Object > map = new HashMap<>();

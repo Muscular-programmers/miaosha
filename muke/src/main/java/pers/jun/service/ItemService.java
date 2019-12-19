@@ -14,6 +14,7 @@ import pers.jun.controller.viewObject.ItemVo;
 import pers.jun.error.BusinessException;
 import pers.jun.pojo.ItemScroll;
 import pers.jun.service.model.ItemModel;
+import pers.jun.service.model.OrderItemModel;
 import pers.jun.service.model.PromoModel;
 
 import java.util.List;
@@ -43,7 +44,8 @@ public interface ItemService {
     ItemModel getNameAndPromo(Integer id);
 
     //更新库存
-    boolean decreaseStock(Integer itemId,Integer amount);
+    //boolean decreaseStock(Integer itemId,Integer amount);
+    boolean decreaseStock(List<OrderItemModel> orderItemModels);
 
     //更新销量
     boolean increaseSales(Integer id,Integer amount);

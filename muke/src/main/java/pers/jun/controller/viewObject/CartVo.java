@@ -61,7 +61,7 @@ public class CartVo {
     private String checked = "1";
 
     //前端购物车可添加最大数值
-    private int limitNum = 100;
+    private int limitNum = 10;
 
 
 

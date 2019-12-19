@@ -43,7 +43,7 @@ public class OrderModel {
     //下单商品 orderItems
     private List<OrderItemModel> orderItems;
 
-    //订单总价格
+    //订单总价格(此处设置为Double，因为查询所有订单时存在与这个类对的mapper操作
     private Double totalPrice;
 
     //下单时间

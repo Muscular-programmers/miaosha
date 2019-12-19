@@ -18,4 +18,7 @@ public interface AddressService {
 
     //删除用户地址
     int delAddress(AddressModel addressModel) throws BusinessException;
+
+    // 根据id查
+    AddressModel getAddress(Integer address) throws BusinessException;
 }

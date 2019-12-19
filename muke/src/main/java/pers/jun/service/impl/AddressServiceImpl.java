@@ -104,6 +104,18 @@ public class AddressServiceImpl implements AddressService {
     }
 
     /**
+     * 根据id查
+     */
+    public AddressModel getAddress(Integer address) throws BusinessException {
+        if(address == null) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        }
+        Address address1 = addressMapper.selectByPrimaryKey(address);
+        AddressModel addressModel = converToAddressModel(address1);
+        return addressModel;
+    }
+
+    /**
      * 关于更新默认地址的方法（修改和添加地址）
      * @param addressModel
      * @return
@@ -114,7 +126,7 @@ public class AddressServiceImpl implements AddressService {
         if (addressModel.getIsDefault()) {
             Address address = addressMapper.selectByIdDefault(addressModel.getUserId(), true);
             //查询默认的地址和当前的地址不相等，则修改原来的默认地址isDefault为false
-            if (address != null && -address.getId() != addressModel.getAddressId()) {
+            if (address != null && address.getId() != addressModel.getAddressId()) {
                 address.setIsDefault(false);
                 result = addressMapper.updateByPrimaryKeySelective(address);
             }

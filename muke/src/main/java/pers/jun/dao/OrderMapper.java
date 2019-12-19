@@ -57,5 +57,9 @@ public interface OrderMapper {
     int updateByPrimaryKey(Order record);
 
     // 查询所有用户订单
-    List<OrderModel> selectAll(Integer userId);
+    List<OrderModel> selectAll(Integer userId,Integer page,Integer size);
+
+    // 查询用户订单详情及订单项
+    OrderModel getOrderAndDetail(String orderId);
+
 }

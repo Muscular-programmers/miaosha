@@ -12,6 +12,8 @@ package pers.jun.service.model;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 /**
  * 〈一句话功能简述〉<br> 
  * 〈订单商品〉
@@ -33,7 +35,7 @@ public class OrderItemModel {
     private Integer amount;
 
     //商品价格（如果活动id不为空，则为活动价格）
-    private Double price;
+    private BigDecimal price;
 
     //活动id（可能为空）
     private Integer promoId;

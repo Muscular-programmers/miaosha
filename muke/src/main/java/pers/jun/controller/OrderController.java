@@ -16,6 +16,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Bean;
 import pers.jun.config.UserLoginToken;
 import pers.jun.controller.viewObject.CartVo;
@@ -30,7 +31,9 @@ import pers.jun.pojo.Cart;
 import pers.jun.pojo.Item;
 import pers.jun.pojo.OrderItem;
 import pers.jun.response.CommonReturnType;
+import pers.jun.service.AddressService;
 import pers.jun.service.OrderService;
+import pers.jun.service.model.AddressModel;
 import pers.jun.service.model.OrderModel;
 import pers.jun.service.model.UserModel;
 import org.joda.time.format.DateTimeFormat;
@@ -40,6 +43,7 @@ import org.springframework.web.bind.annotation.*;
 import pers.jun.util.JwtUtil;
 
 import javax.servlet.http.HttpServletRequest;
+import java.lang.annotation.Repeatable;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
@@ -70,6 +74,9 @@ public class OrderController extends BaseController {
     @Autowired
     private ItemMapper itemMapper;
 
+    @Autowired
+    private AddressService addressService;
+
     /**
      * 创建订单
      */
@@ -78,35 +85,39 @@ public class OrderController extends BaseController {
     @ApiOperation(value = "创建订单")
     public Object createOrder(@RequestBody OrderModel orderModel) throws BusinessException {
         // 判断用户是否登录
-        System.out.println(orderModel.toString());
         if(orderModel == null)
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
         orderService.createOrder(orderModel);
         return CommonReturnType.create(null);
+    }
 
-        //Integer userId = Integer.valueOf(map.get("userId").toString());
-        //String userName = map.get("userName").toString();
-        //String telephone = map.get("telephone").toString();
-        //Double orderTotal = Double.valueOf(map.get("orderTotal").toString());
-        //Integer addressId = Integer.valueOf(map.get("addressId").toString());
-        //
-        //String goodsList = JSONArray.toJSONString(map.get("goodsList"));
-        //List<CartVo> cartVos = JSON.parseArray(goodsList, CartVo.class);
-        //for (CartVo cartVo : cartVos) {
-        //    System.out.println(cartVo);
-        //}
-        //System.out.println(orderTotal+","+addressId+","+telephone+","+userId+","+userName);
-        //参数校验
+    /**
+     * 查询订单详情
+     */
+    @UserLoginToken
+    @GetMapping(value = "/orderDetail")
+    @ApiOperation(value = "查看订单详情")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "orderId",value = "订单id",required = true,paramType = "query")
+    })
+    public CommonReturnType orderDetail(@RequestParam(name = "orderId") String orderId) throws BusinessException {
+        if (StringUtils.isBlank(orderId)) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        }
+        OrderModel orderModel = orderService.orderById(orderId);
+        OrderVo orderVo = converToOderVo(orderModel);
+        return CommonReturnType.create(orderVo);
+    }
 
-        ////调用service
-        ////得到用户信息
-        //Boolean is_login = (Boolean) httpServletRequest.getSession().getAttribute("IS_LOGIN");
-        //if(is_login == null || !is_login){
-        //    throw new BusinessException(EmBusinessError.USER_NOT_LOGIN);
-        //}
-        //UserModel userModel = (UserModel) httpServletRequest.getSession().getAttribute("LOGIN_USER");
-        //orderService.createOrder(userModel.getId(),itemId,promoId,amount);
-        //
+    @UserLoginToken
+    @GetMapping(value = "/delOrder")
+    @ApiOperation(value = "删除订单")
+    public CommonReturnType delOrder(@RequestParam(name = "orderId") String orderId) throws BusinessException {
+        if (StringUtils.isBlank(orderId)) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        }
+        orderService.delOrder(orderId);
+        return CommonReturnType.create(null);
     }
 
     //@UserLoginToken
@@ -134,7 +145,15 @@ public class OrderController extends BaseController {
      * 得到订单列表
      */
     @UserLoginToken
-    @RequestMapping("/getList")
+    @GetMapping("/getList")
+    @ApiOperation(value = "得到订单列表")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "userId",value = "用户id",required = true,paramType = "query"),
+            @ApiImplicitParam(name = "page",value = "分页page",required = false,paramType = "query"),
+            @ApiImplicitParam(name = "size",value = "分页size",required = false,paramType = "query")
+        }
+    )
+
     public Object getList(@RequestParam(name = "userId") Integer userId,
                           @RequestParam(name = "page") Integer page,
                           @RequestParam(name = "size") Integer size) throws BusinessException {
@@ -144,35 +163,35 @@ public class OrderController extends BaseController {
             throw new BusinessException(EmBusinessError.USER_NOT_LOGIN);
 
         //调用service
-        List<OrderModel> modelList = orderService.getList(userId);
-        System.out.println("controller" + modelList.toString());
-
+        List<OrderModel> modelList = orderService.getList(userId,page,size);
         //bean转换
         List<OrderVo> orderVos = converToOderVoList(modelList);
-        System.out.println(orderVos);
-
         return CommonReturnType.create(orderVos);
     }
 
     /**
      * bean转换
      */
-    private OrderVo converToOderVo(OrderModel orderModel){
+    private OrderVo converToOderVo(OrderModel orderModel) throws BusinessException {
         //判空
         if(orderModel == null)
             return null;
         OrderVo orderVo = new OrderVo();
         BeanUtils.copyProperties(orderModel,orderVo);
+        // 设置价格
+        orderVo.setTotalPrice(new BigDecimal(orderModel.getTotalPrice()));
+        // 设置订单地址详细信息
+        AddressModel addressModel = addressService.getAddress(orderModel.getAddress());
+        orderVo.setAddress(addressModel);
         orderVo.setCreateDate(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(orderModel.getCreateDate()));
         orderVo.setFinishDate(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(orderModel.getFinishDate()));
-        orderVo.setTotalPrice(new BigDecimal(orderModel.getTotalPrice()));
         return orderVo;
     }
 
     /**
      * bean转换
      */
-    private List<OrderVo> converToOderVoList(List<OrderModel> orderModels){
+    private List<OrderVo> converToOderVoList(List<OrderModel> orderModels) throws BusinessException {
         //判空
         if(orderModels == null)
             return null;
