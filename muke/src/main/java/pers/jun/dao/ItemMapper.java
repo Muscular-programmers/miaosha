@@ -1,5 +1,7 @@
 package pers.jun.dao;
 
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import org.apache.ibatis.annotations.Mapper;
 import pers.jun.pojo.Item;
 import pers.jun.service.model.ItemModel;
@@ -69,7 +71,7 @@ public interface ItemMapper {
     /**
      * 查询所有
      */
-    List<Item> selectList();
+    Page<Item> selectList();
 
     /**
      * 查询热门商品
@@ -79,5 +81,5 @@ public interface ItemMapper {
     /**
      * 模糊查找
      */
-    List<Item> getListByName(String key);
+    Page<Item> getListByName(String key);
 }

@@ -2,7 +2,10 @@ package pers.jun;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.session.data.redis.config.annotation.web.http.EnableRedisHttpSession;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
@@ -11,14 +14,11 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
  * Hello world!
  */
 
-@SpringBootApplication
-@ComponentScan(basePackages = {"pers.jun"})
+@SpringBootApplication(exclude = {SecurityAutoConfiguration.class})
 @EnableSwagger2
-//@EnableWebMvc
+
 public class App {
     public static void main(String[] args) {
-
-        //System.out.println("Hello World!");
         SpringApplication.run(App.class,args);
     }
 }

@@ -10,6 +10,8 @@
  */
 package pers.jun.controller;
 
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageInfo;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -17,21 +19,16 @@ import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
 import pers.jun.controller.viewObject.ItemVo;
 import pers.jun.error.BusinessException;
-import pers.jun.error.EmBusinessError;
 import pers.jun.response.CommonReturnType;
 import pers.jun.service.ItemService;
 import pers.jun.service.model.ItemModel;
 import org.joda.time.format.DateTimeFormat;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static pers.jun.error.EmBusinessError.PARAMETER_VALIDATION_ERROR;
 
 /**
  * 〈一句话功能简述〉<br> 
@@ -84,59 +81,19 @@ public class ItemController extends BaseController {
             @ApiImplicitParam(name = "priceLte",value = "按价格筛选最高价",paramType = "query")
     })
     public CommonReturnType itemList(@RequestParam(name = "key",required = false) String key,
-                           @RequestParam(name = "page",required = false) String page,
-                           @RequestParam(name = "size",required = false) String size,
+                           @RequestParam(name = "page") Integer page,
+                           @RequestParam(name = "size") Integer size,
                            @RequestParam(name = "sort",required = false) String sort,
                            @RequestParam(name = "priceGt",required = false) String priceGt,
                            @RequestParam(name = "priceLte",required = false) String priceLte) throws BusinessException {
-        List<ItemModel> itemModelList = null;
-        // 如果key不为空，则为模糊搜索
-        if (StringUtils.isNotBlank(key)) {
-            itemModelList = itemService.getListByName(key);
-        }else {
-            itemModelList = itemService.getList();
-        }
 
-        //将List<ItemModel>转化为List<ItemVo>
-        List<ItemVo> voList = convertoItemVoList(itemModelList);
-
-        // 价格从低到高排序（sort=1）
-        if (StringUtils.isNotBlank(sort) && Integer.valueOf(sort) == 1) {
-            Collections.sort(voList,(item1,item2)-> item1.getPrice().subtract(item2.getPrice()).intValue()
-            );
-        }
-        // 价格从高到低排序（sort=-1）
-        if (StringUtils.isNotBlank(sort) && Integer.valueOf(sort) == -1) {
-            Collections.sort(voList,(item1,item2)-> item2.getPrice().subtract(item1.getPrice()).intValue()
-            );
-        }
-        // 价格筛选
-        if(StringUtils.isNotBlank(priceGt) || StringUtils.isNotBlank(priceLte)){
-            //设置筛选范围
-            int priceGT = 0;
-            int priceLT = Integer.MAX_VALUE;
-            if(StringUtils.isNotBlank(priceGt)){
-                priceGT = Integer.parseInt(priceGt);
-                //if(priceGT < 0)
-                    //throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"价格必须大于0");
-            }
-            if(StringUtils.isNotBlank(priceLte)) {
-                priceLT = Integer.parseInt(priceLte);
-                //if(priceLT < 0)
-                    //throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"价格必须大于0");
-            }
-            Iterator<ItemVo> iterator = voList.iterator();
-            while (iterator.hasNext()) {
-                ItemVo next = iterator.next();
-                int price = next.getPrice().intValue();
-                if(price > priceLT || price < priceGT)
-                    iterator.remove();
-            }
-
-        }
-        return CommonReturnType.create(voList);
+        Map<String,Object> map = new HashMap<>();
+        Page<ItemModel> list = itemService.getList(key, page, size, sort, priceGt, priceLte);
+        Page<ItemVo> voList = convertoItemVoList(list);
+        map.put("data",voList);
+        map.put("total",voList.getTotal());
+        return CommonReturnType.create(map);
     }
-
 
     /**
      * 创建商品
@@ -155,7 +112,6 @@ public class ItemController extends BaseController {
         return CommonReturnType.create(itemVo);
     }
 
-
     /**
      * 获取商品详情
      */
@@ -172,7 +128,6 @@ public class ItemController extends BaseController {
 
         return CommonReturnType.create(itemVo);
     }
-
 
     /**
      * bean转换
@@ -214,6 +169,17 @@ public class ItemController extends BaseController {
             return itemVo;
         }).collect(Collectors.toList());
         return itemVoList;
+    }
+
+    private Page<ItemVo> convertoItemVoList(Page<ItemModel> itemModelList) {
+        if(itemModelList == null)
+            return null;
+        Page<ItemVo> itemVos = new Page<>();
+        for (ItemModel itemModel : itemModelList) {
+            itemVos.add(convertToItemVO(itemModel));
+        }
+        BeanUtils.copyProperties(itemModelList,itemVos);
+        return itemVos;
     }
 }
 

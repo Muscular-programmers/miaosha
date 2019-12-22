@@ -67,7 +67,7 @@ public class CartServiceImpl implements CartService {
     public void addCart(Integer itemId, Integer amount, Integer userId) throws BusinessException {
         //参数验证
         if(itemId == null){
-            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"商品不合法");
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"商品不合法，加入购物车失败");
         }
         if(amount == null){
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
@@ -127,6 +127,14 @@ public class CartServiceImpl implements CartService {
         if(result < 1)
             throw new BusinessException(EmBusinessError.CART_UNKONW_ERROR);
         return result;
+    }
+
+    /**
+     * 根据用户id和商品id判断购物测条目是否存在
+     */
+    public CartModel getCartByUserAndItem(Integer userId, Integer itemId) {
+        Cart cart = cartMapper.selectByUserAndItem(itemId, userId);
+        return convertToCartModel(cart);
     }
 
 

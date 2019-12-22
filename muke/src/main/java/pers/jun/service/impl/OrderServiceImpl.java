@@ -22,6 +22,7 @@ import pers.jun.pojo.OrderItem;
 import pers.jun.pojo.Sequence;
 import pers.jun.response.CommonReturnType;
 import pers.jun.service.*;
+import pers.jun.service.model.CartModel;
 import pers.jun.service.model.ItemModel;
 import pers.jun.service.model.OrderItemModel;
 import pers.jun.service.model.OrderModel;
@@ -110,7 +111,7 @@ public class OrderServiceImpl implements OrderService {
                 // 设置商品活动id
                 orderItem.setPromoId(itemModel.getPromoModel().getId());
                 // 设置商品活动价格
-                orderItem.setPrice(itemModel.getPrice());
+                orderItem.setPrice(itemModel.getPrice().doubleValue());
             }
             // 4.添加订单item
             int result = orderItemService.insertOrderItem(converrToOrderItem(orderItem));
@@ -123,10 +124,13 @@ public class OrderServiceImpl implements OrderService {
                 throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"更新销量未知错误");
 
             // 6.从购物车删除
-            System.out.println(orderModel.getUserId()+","+orderItem.getItemId());
-            int deleteCart = cartService.deleteCart(orderModel.getUserId(), orderItem.getItemId());
-            if(deleteCart < 1)
-                throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"删除购物车未知错误");
+            CartModel cartModel = cartService.getCartByUserAndItem(orderModel.getUserId(),orderItem.getItemId());
+            if(cartModel != null){
+                int deleteCart = cartService.deleteCart(orderModel.getUserId(), orderItem.getItemId());
+                if(deleteCart < 1)
+                    throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"删除购物车未知错误");
+            }
+
         }
         return orderModel;
 
@@ -205,7 +209,11 @@ public class OrderServiceImpl implements OrderService {
         if(page == null || size == null)
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"分页参数不合法");
         //查询订单信息
-        List<OrderModel> orders = orderMapper.selectAll(userId,page,size);
+        // 得到关于分页的参数：(page - 1) * size & size
+        int temp = (page - 1) * size;
+        temp = temp > 0 ? temp : 0;
+        System.out.println(userId + "," + temp + "," + size);
+        List<OrderModel> orders = orderMapper.selectAll(userId,temp,size);
         // 关于图片，只要第一张
         for (OrderModel order : orders) {
             List<OrderItemModel> orderItems = order.getOrderItems();
@@ -299,31 +307,19 @@ public class OrderServiceImpl implements OrderService {
         order.setCreateDate(orderModel.getCreateDate());
         // 设置订单状态为1
         order.setStatus(1);
-        // 设置价格
-        order.setTotalPrice(orderModel.getTotalPrice().doubleValue());
         // 如果ordermodel不存在完成时间，将完成时间设置为创建时间
         if(orderModel.getFinishDate() == null)
             order.setFinishDate(order.getCreateDate());
         return order;
     }
 
-    /**
-     * bean转换
-     */
-    private OrderModel convertToOrderModel(Order order){
-        if(order == null)
-            return null;
-        OrderModel orderModel = new OrderModel();
-        BeanUtils.copyProperties(order,orderModel);
-        return orderModel;
-    }
 
     private OrderItem converrToOrderItem(OrderItemModel orderItemModel) {
         if(orderItemModel == null)
             return null;
         OrderItem orderItem = new OrderItem();
         BeanUtils.copyProperties(orderItemModel,orderItem);
-        orderItem.setPrice(orderItemModel.getPrice().doubleValue());
+        orderItem.setPrice(orderItemModel.getPrice());
         return orderItem;
     }
 

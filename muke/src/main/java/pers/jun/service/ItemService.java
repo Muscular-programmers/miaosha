@@ -10,7 +10,8 @@
  */
 package pers.jun.service;
 
-import pers.jun.controller.viewObject.ItemVo;
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageInfo;
 import pers.jun.error.BusinessException;
 import pers.jun.pojo.ItemScroll;
 import pers.jun.service.model.ItemModel;
@@ -32,7 +33,7 @@ public interface ItemService {
     ItemModel createItem(ItemModel itemModel) throws BusinessException;
 
     //浏览商品
-    List<ItemModel> getList();
+    Page<ItemModel> getList(String key, Integer page, Integer size, String sort, String priceGt, String priceLte);
 
     //通过分类查找查找商品
     List<ItemModel> getByCategory(Integer categoryId);
@@ -41,7 +42,7 @@ public interface ItemService {
     ItemModel getById(Integer id);
 
     //得到名称和活动（订单调用）
-    ItemModel getNameAndPromo(Integer id);
+    //ItemModel getNameAndPromo(Integer id);
 
     //更新库存
     //boolean decreaseStock(Integer itemId,Integer amount);
@@ -59,6 +60,4 @@ public interface ItemService {
     //查询图片轮播的商品
     List<ItemScroll> getHomeScroll();
 
-    //根据名字模糊查找
-    List<ItemModel> getListByName(String key);
 }

@@ -149,22 +149,14 @@
 
   <!--查询用户所有订单-->
   <select id="selectAll" parameterType="integer" resultMap="OrderAndDetail">
-    <!--select-->
-    <!--<include refid="Base_Column_List" />-->
-    <!--from `order`-->
-    <!--where user_id = #{userId,jdbcType=VARCHAR}-->
-
-    select o.*,r.*
-    from `order` o
-    left join
-    (
-    select oi.*,item.title,item.img_url
+    select t.*,r.* from
+	(select o.* from `order` o where o.user_id = #{userId} limit #{page},#{size}) r
+	left join
+	(select oi.item_id,oi.price,oi.amount,oi.promo_id,oi.order_id,item.title,item.img_url
     from order_item oi
     left join item
-    on oi.item_id = item.id) r
-    on o.id = r.order_id
-    where o.user_id = #{userId}
-    limit
+    on oi.item_id = item.id ) t
+	on r.id = t.order_id
   </select>
 
   <select id="getOrderAndDetail" parameterType="string" resultMap="OrderAndDetail">

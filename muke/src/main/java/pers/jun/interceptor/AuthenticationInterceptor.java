@@ -18,6 +18,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -68,6 +69,9 @@ public class AuthenticationInterceptor implements HandlerInterceptor  {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         //从Http请求中获取token
@@ -86,26 +90,13 @@ public class AuthenticationInterceptor implements HandlerInterceptor  {
 
         //检查有没有需要登陆的注解
         if (method.isAnnotationPresent(UserLoginToken.class)) {
-            UserLoginToken userLoginToken = method.getAnnotation(UserLoginToken.class);
+            //UserLoginToken userLoginToken = method.getAnnotation(UserLoginToken.class);
             //执行认证
             if(StringUtils.isBlank(token))
                 throw new BusinessException(EmBusinessError.USER_NOT_LOGIN,"无token，请重新登录！");
-            //获取token中的userId
-            String userId;
-            userId = JWT.decode(token).getAudience().get(0);
-            //判断用户是否存在
-            UserModel userById = userService.getUserById(Integer.valueOf(userId));
-            if(userById == null)
-                throw new BusinessException(EmBusinessError.USER_NOT_EXIST,"用户不存在，请重新登录");
-            //验证token
-            JWTVerifier jwtVerifier = JWT.require(Algorithm.HMAC256(userById.getPassword())).build();
-            try {
-                jwtVerifier.verify(token);
-            } catch (JWTVerificationException e) {
-                throw new RuntimeException("401");
-            }
-            //token验证成功之后将用户赋值给全局变量用于其他类获取
-            userModelByToken = userById;
+            // 从redis得到usermodel
+            UserModel userModel = (UserModel) redisTemplate.opsForValue().get(token);
+            userModelByToken = userModel;
             return true;
         }
         return true;

@@ -89,17 +89,8 @@ public class OrderItemServiceImpl implements OrderItemService {
             return null;
         OrderItemModel orderItemModel = new OrderItemModel();
         BeanUtils.copyProperties(orderItem,orderItemModel);
-        orderItemModel.setPrice(new BigDecimal(orderItem.getPrice()));
+        orderItemModel.setPrice(orderItem.getPrice());
         return orderItemModel;
     }
 
-    private List<OrderItemModel> convertToList(List<OrderItem> orderItems) {
-        if(orderItems == null)
-            return null;
-        List<OrderItemModel> orderItemModels = new ArrayList<>();
-        for (OrderItem orderItem : orderItems) {
-            orderItemModels.add(convertToOrderItemModel(orderItem));
-        }
-        return orderItemModels;
-    }
 }

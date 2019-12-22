@@ -12,6 +12,7 @@ package pers.jun.controller;
 
 import com.alibaba.druid.util.StringUtils;
 import io.swagger.annotations.*;
+import org.springframework.data.redis.core.RedisTemplate;
 import pers.jun.config.UserLoginToken;
 import pers.jun.controller.viewObject.UserVo;
 import pers.jun.error.BusinessException;
@@ -33,6 +34,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 〈一句话功能简述〉<br> 
@@ -53,7 +55,8 @@ public class UserController extends BaseController {
     private UserService userService;
 
     @Autowired
-    private HttpServletRequest httpRequest;
+    private RedisTemplate redisTemplate;
+
 
     /**
      * 用户登录
@@ -73,6 +76,9 @@ public class UserController extends BaseController {
 
         //得到token
         String token = JwtUtil.getToken(userModel);
+        // 保存到redis并设置过期时间
+        redisTemplate.opsForValue().set(token,userModel);
+        redisTemplate.expire(token,30, TimeUnit.MINUTES);
 
         //将用户登录凭证添加到用户session
         //httpRequest.getSession().setAttribute("IS_LOGIN",true);

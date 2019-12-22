@@ -10,7 +10,11 @@
  */
 package pers.jun.service.impl;
 
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.util.CollectionUtils;
 import pers.jun.controller.viewObject.ItemVo;
 import pers.jun.dao.ItemMapper;
 import pers.jun.dao.ItemScrollMapper;
@@ -34,8 +38,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 〈一句话功能简述〉<br> 
@@ -83,20 +88,85 @@ public class ItemServiceImpl implements ItemService {
 
         //返回创建完成的对象
         return getById(itemModel.getItemId());
-
     }
-
 
     /**
      * 查询所有
      * @return
      */
-    public List<ItemModel> getList() {
-        List<Item> itemList = itemMapper.selectList();
-        List<ItemModel> itemModelList = converToItemModelList(itemList);
+    public Page<ItemModel> getList(String key, Integer page, Integer size, String sort, String priceGt, String priceLte) {
+        Page<Item> itemList = null;
 
-        return itemModelList;
+        // 不为空，模糊搜索
+        if (StringUtils.isBlank(key)) {
+            // 价格从低到高排序（sort=1）
+            if (StringUtils.isNotBlank(sort) && Integer.valueOf(sort) == 1) {
+                PageHelper.startPage(page,size);
+                PageHelper.orderBy("price asc");
+                itemList = itemMapper.selectList();
+                // 价格从高到低排序（sort=-1）
+            } else if(StringUtils.isNotBlank(sort) && Integer.valueOf(sort) == -1){
+                PageHelper.startPage(page,size);
+                PageHelper.orderBy("price desc");
+                itemList = itemMapper.selectList();
+            } else{
+                PageHelper.startPage(page,size);
+                itemList = itemMapper.selectList();
+            }
+        }else{
+            // 价格从低到高排序（sort=1）
+            if (StringUtils.isNotBlank(sort) && Integer.valueOf(sort) == 1) {
+                PageHelper.startPage(page,size);
+                PageHelper.orderBy("price asc");
+                itemList  = itemMapper.getListByName(key);
+                // 价格从高到低排序（sort=-1）
+            } else if(StringUtils.isNotBlank(sort) && Integer.valueOf(sort) == -1){
+                PageHelper.startPage(page,size);
+                PageHelper.orderBy("price desc");
+                itemList  = itemMapper.getListByName(key);
+            } else{
+                PageHelper.startPage(page,size);
+                itemList = itemMapper.getListByName(key);
+            }
+        }
+        Page<ItemModel> itemModelPage = converToItemModelList(itemList);
+        //// 价格从低到高排序（sort=1）
+        //if (StringUtils.isNotBlank(sort) && Integer.valueOf(sort) == 1) {
+        //    Collections.sort(itemModelPage,(item1, item2)-> item1.getPrice().subtract(item2.getPrice()).intValue()
+        //    );
+        //}
+        //// 价格从高到低排序（sort=-1）
+        //if (StringUtils.isNotBlank(sort) && Integer.valueOf(sort) == -1) {
+        //    Collections.sort(itemModelPage,(item1,item2)-> item2.getPrice().subtract(item1.getPrice()).intValue()
+        //    );
+        //}
+        // 价格筛选
+        if(StringUtils.isNotBlank(priceGt) || StringUtils.isNotBlank(priceLte)){
+            //设置筛选范围
+            int priceGT = 0;
+            int priceLT = Integer.MAX_VALUE;
+            if(StringUtils.isNotBlank(priceGt)){
+                priceGT = Integer.parseInt(priceGt);
+                //if(priceGT < 0)
+                //throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"价格必须大于0");
+            }
+            if(StringUtils.isNotBlank(priceLte)) {
+                priceLT = Integer.parseInt(priceLte);
+                //if(priceLT < 0)
+                //throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"价格必须大于0");
+            }
+            Iterator<ItemModel> iterator = itemModelPage.iterator();
+            while (iterator.hasNext()) {
+                ItemModel next = iterator.next();
+                int price = next.getPrice().intValue();
+                if(price > priceLT || price < priceGT)
+                    iterator.remove();
+            }
+
+        }
+        return itemModelPage;
     }
+
 
     /**
      * 通过分类查找
@@ -106,7 +176,6 @@ public class ItemServiceImpl implements ItemService {
         List<Item> itemList = itemMapper.selectByCategory(categoryId);
         List<ItemModel> itemModelList = converToItemModelList(itemList);
         return itemModelList;
-
     }
 
     /**
@@ -235,13 +304,6 @@ public class ItemServiceImpl implements ItemService {
     }
 
     /**
-     * 根据商品名模糊查找
-     */
-    public List<ItemModel> getListByName(String key) {
-        return converToItemModelList(itemMapper.getListByName(key));
-    }
-
-    /**
      * bean转换
      * @param itemModel
      * @return
@@ -321,6 +383,25 @@ public class ItemServiceImpl implements ItemService {
             itemModelList.add(itemModel);
         }
         return itemModelList;
+    }
+
+    private Page<ItemModel> converToItemModelList(Page<Item> itemList) {
+        if(itemList == null)
+            return null;
+        Page<ItemModel> itemModels = new Page<>();
+        for (Item item : itemList) {
+            ItemStock stock = stockMapper.selectByItemId(item.getId());
+            ItemModel itemModel = convertToItemModel(item, stock);
+            //得到商品相应的活动
+            PromoModel promoModel = promoService.getPromoByItemId(itemModel.getItemId());
+            //表示存在还未结束的活动
+            if(promoModel != null && promoModel.getStatus() != 3){
+                itemModel.setPromoModel(promoModel);
+            }
+            itemModels.add(itemModel);
+        }
+        BeanUtils.copyProperties(itemList,itemModels);
+        return itemModels;
     }
 
     /**

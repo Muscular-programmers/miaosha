@@ -35,7 +35,7 @@ public class OrderItemModel {
     private Integer amount;
 
     //商品价格（如果活动id不为空，则为活动价格）
-    private BigDecimal price;
+    private Double price;
 
     //活动id（可能为空）
     private Integer promoId;

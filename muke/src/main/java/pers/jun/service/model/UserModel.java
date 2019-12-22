@@ -16,6 +16,7 @@ import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import java.io.Serializable;
 
 /**
  * 〈一句话功能简述〉<br> 
@@ -26,7 +27,7 @@ import javax.validation.constraints.NotNull;
  * @since 1.0.0
  */
 @Data
-public class UserModel {
+public class UserModel implements Serializable {
 
     private Integer id;
 

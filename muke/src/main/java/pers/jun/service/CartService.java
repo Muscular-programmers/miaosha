@@ -35,4 +35,6 @@ public interface CartService {
 
     //从购物车删除
     int deleteCart(Integer userId, Integer itemId) throws BusinessException;
+
+    CartModel getCartByUserAndItem(Integer userId, Integer itemId);
 }

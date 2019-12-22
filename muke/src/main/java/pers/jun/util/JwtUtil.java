@@ -11,9 +11,12 @@
 package pers.jun.util;
 
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import pers.jun.error.EmBusinessError;
 import pers.jun.service.UserService;
 import pers.jun.service.model.UserModel;
 
@@ -61,6 +64,25 @@ public class JwtUtil {
     //    return userById;
     //
     //}
+
+
+    ////获取token中的userId
+    //String userId;
+    //userId = JWT.decode(token).getAudience().get(0);
+    ////判断用户是否存在
+    //UserModel userById = userService.getUserById(Integer.valueOf(userId));
+    //        if(userById == null)
+    //        throw new BusinessException(EmBusinessError.USER_NOT_EXIST,"用户不存在，请重新登录");
+    ////验证token
+    //JWTVerifier jwtVerifier = JWT.require(Algorithm.HMAC256(userById.getPassword())).build();
+    //        try {
+    //    jwtVerifier.verify(token);
+    //} catch (
+    //JWTVerificationException e) {
+    //    throw new RuntimeException("401");
+    //}
+    ////token验证成功之后将用户赋值给全局变量用于其他类获取
+    //userModelByToken = userById;
 
 
 
