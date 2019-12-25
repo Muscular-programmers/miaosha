@@ -58,9 +58,6 @@ public interface ItemStockMapper {
 
     /**
      * 根据商品id更新stock字段
-     * @param itemId
-     * @param amount
-     * @return
      */
     //int updateByItemId(@Param("itemId")Integer itemId, @Param("amount")Integer amount);
     int updateByItemId(List<OrderItemModel> orderItemModels);

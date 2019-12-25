@@ -29,7 +29,7 @@ public class CartVo {
     /**
      id
      */
-    private Integer id;
+    //private Integer id;
 
     //商品id
     private Integer itemId;

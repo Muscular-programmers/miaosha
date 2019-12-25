@@ -17,6 +17,7 @@ import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.RedisTemplate;
 import pers.jun.controller.viewObject.ItemVo;
 import pers.jun.error.BusinessException;
 import pers.jun.response.CommonReturnType;
@@ -28,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -46,6 +48,9 @@ public class ItemController extends BaseController {
 
     @Autowired
     private ItemService itemService;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     /**
      * 通过分类查找商品
@@ -121,8 +126,15 @@ public class ItemController extends BaseController {
             @ApiImplicitParam(name = "id",value = "商品id",required = true,paramType = "query")
     })
     public Object getItem(@RequestParam(name = "id")Integer id) throws BusinessException {
-
-        ItemModel itemModel = itemService.getById(id);
+        ItemModel itemModel = (ItemModel) redisTemplate.opsForValue().get("item_"+id);
+        if (itemModel == null) {
+            // 如果缓存中没有，调用下层service
+            itemModel = itemService.getById(id);
+            // 存入redis缓存
+            redisTemplate.opsForValue().set("item_"+id,itemModel);
+            // 设置默认过期时间
+            redisTemplate.expire("item_"+id,10, TimeUnit.MINUTES);
+        }
 
         ItemVo itemVo = convertToItemVO(itemModel);
 

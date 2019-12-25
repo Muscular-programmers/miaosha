@@ -84,7 +84,8 @@ public class OrderController extends BaseController {
     @PostMapping(value = "/create")
     @ApiOperation(value = "创建订单")
     public Object createOrder(@RequestBody OrderModel orderModel) throws BusinessException {
-        // 判断用户是否登录
+        //判断用户是否登录
+        checkUserLogin();
         if(orderModel == null)
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
         orderService.createOrder(orderModel);
@@ -101,6 +102,8 @@ public class OrderController extends BaseController {
             @ApiImplicitParam(name = "orderId",value = "订单id",required = true,paramType = "query")
     })
     public CommonReturnType orderDetail(@RequestParam(name = "orderId") String orderId) throws BusinessException {
+        //判断用户是否登录
+        checkUserLogin();
         if (StringUtils.isBlank(orderId)) {
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
         }
@@ -113,6 +116,8 @@ public class OrderController extends BaseController {
     @GetMapping(value = "/delOrder")
     @ApiOperation(value = "删除订单")
     public CommonReturnType delOrder(@RequestParam(name = "orderId") String orderId) throws BusinessException {
+        //判断用户是否登录
+        checkUserLogin();
         if (StringUtils.isBlank(orderId)) {
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
         }
@@ -157,16 +162,24 @@ public class OrderController extends BaseController {
     public Object getList(@RequestParam(name = "userId") Integer userId,
                           @RequestParam(name = "page") Integer page,
                           @RequestParam(name = "size") Integer size) throws BusinessException {
-        // 判断用户是否登录
-        UserModel userModel = AuthenticationInterceptor.userModelByToken;
-        if(userModel == null)
-            throw new BusinessException(EmBusinessError.USER_NOT_LOGIN);
+        //判断用户是否登录
+        checkUserLogin();
 
         //调用service
         List<OrderModel> modelList = orderService.getList(userId,page,size);
         //bean转换
         List<OrderVo> orderVos = converToOderVoList(modelList);
         return CommonReturnType.create(orderVos);
+    }
+
+    /**
+     * 检查用户是否登录
+     */
+    private UserModel checkUserLogin() throws BusinessException {
+        UserModel userModel = AuthenticationInterceptor.userModelByToken;
+        if(userModel == null)
+            throw new BusinessException(EmBusinessError.USER_NOT_LOGIN);
+        return userModel;
     }
 
     /**

@@ -170,7 +170,6 @@ public class ItemServiceImpl implements ItemService {
 
     /**
      * 通过分类查找
-     * @return
      */
     public List<ItemModel> getByCategory(Integer categoryId) {
         List<Item> itemList = itemMapper.selectByCategory(categoryId);
@@ -180,8 +179,6 @@ public class ItemServiceImpl implements ItemService {
 
     /**
      * 通过id查找
-     * @param id
-     * @return
      */
     public ItemModel getById(Integer id) {
         Item item = itemMapper.selectByPrimaryKey(id);

@@ -27,7 +27,8 @@ public enum EmBusinessError implements CommonError {
 
     //10000开头为用户相关错误
     USER_NOT_EXIST(20001,"用户不存在"),
-    USER_NOT_LOGIN(20002,"用户未登录"),
+    USER_NOT_LOGIN(20002,"用户未登录或会话过期，请重新登录"),
+    //USER__SESSION_EXPIRE(20003,"用户会话过期，请重新登录"),
 
     //20000开头为购物车错误
     CART_UNKONW_ERROR(20001,"购物车条目操作未知错误"),

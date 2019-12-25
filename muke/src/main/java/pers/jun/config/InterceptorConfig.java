@@ -33,7 +33,7 @@ import pers.jun.interceptor.AuthenticationInterceptor;
  * @since 1.0.0
  */
 @Configuration
-public class InterceptorConfig extends WebMvcConfigurerAdapter implements WebMvcConfigurer {
+    public class InterceptorConfig extends WebMvcConfigurerAdapter implements WebMvcConfigurer {
 
     // 访问swagger报错，找不到静态资源
     public void addResourceHandlers(ResourceHandlerRegistry registry) {

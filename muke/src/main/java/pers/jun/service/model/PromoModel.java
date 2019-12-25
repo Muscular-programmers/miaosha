@@ -13,6 +13,7 @@ package pers.jun.service.model;
 import lombok.Data;
 import org.joda.time.DateTime;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
@@ -24,7 +25,7 @@ import java.math.BigDecimal;
  * @since 1.0.0
  */
 @Data
-public class PromoModel {
+public class PromoModel implements Serializable {
 
     //秒杀活动id
     private Integer id;
