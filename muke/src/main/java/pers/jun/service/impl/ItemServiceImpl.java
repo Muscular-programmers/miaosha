@@ -14,6 +14,7 @@ import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.util.CollectionUtils;
 import pers.jun.controller.viewObject.ItemVo;
 import pers.jun.dao.ItemMapper;
@@ -21,6 +22,7 @@ import pers.jun.dao.ItemScrollMapper;
 import pers.jun.dao.ItemStockMapper;
 import pers.jun.error.BusinessException;
 import pers.jun.error.EmBusinessError;
+import pers.jun.mq.MqProducer;
 import pers.jun.pojo.Item;
 import pers.jun.pojo.ItemScroll;
 import pers.jun.pojo.ItemStock;
@@ -41,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 〈一句话功能简述〉<br> 
@@ -68,6 +71,12 @@ public class ItemServiceImpl implements ItemService {
     @Autowired
     private ItemScrollMapper itemScrollMapper;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    @Autowired
+    private MqProducer mqProducer;
+
     @Override
     public ItemModel createItem(ItemModel itemModel) throws BusinessException {
         //校验入参
@@ -94,7 +103,7 @@ public class ItemServiceImpl implements ItemService {
      * 查询所有
      * @return
      */
-    public Page<ItemModel> getList(String key, Integer page, Integer size, String sort, String priceGt, String priceLte) {
+            public Page<ItemModel> getList(String key, Integer page, Integer size, String sort, String priceGt, String priceLte) {
         Page<Item> itemList = null;
 
         // 不为空，模糊搜索
@@ -204,6 +213,19 @@ public class ItemServiceImpl implements ItemService {
     }
 
     /**
+     * 从缓存查商品详情
+     */
+    public ItemModel getByIdIncache(Integer id) {
+        ItemModel itemModel = (ItemModel)redisTemplate.opsForValue().get("item_validate_id"+id);
+        if (itemModel == null) {
+            itemModel = this.getById(id);
+            redisTemplate.opsForValue().set("item_validate_id"+id,itemModel);
+            redisTemplate.expire("item_validate_id"+id,10, TimeUnit.MINUTES);
+        }
+        return itemModel;
+    }
+
+    /**
      * 得到名称和活动（订单展示）
      * @param id
      * @return
@@ -242,16 +264,31 @@ public class ItemServiceImpl implements ItemService {
     @Transactional
     public boolean decreaseStock(List<OrderItemModel> orderItemModels) {
         int affectLine = stockMapper.updateByItemId(orderItemModels);
-        if(affectLine > 0)
-            return true;
-        return false;
+        return affectLine > 0;
 
+    }
+
+    @Override
+    @Transactional
+    public boolean decreaseStockIncache(Integer itemId,Integer amount) {
+        //返回值result表示操作后的值
+        Long result = redisTemplate.opsForValue().increment("promo_item_id_" + itemId, amount * -1);
+        if(result >= 0){
+            boolean reduceStock = mqProducer.asyncReduceStock(itemId, amount);
+            if (!reduceStock) {
+                redisTemplate.opsForValue().increment("promo_item_id_" + itemId, amount);
+                return false;
+            }
+            return true;
+        }
+        //若操作后返回的result小于0，库布不足，将减掉的库存加回去，返回错误
+        else
+            redisTemplate.opsForValue().increment("promo_item_id_"+itemId, amount);
+        return false;
     }
 
     /**
      * 更新销量
-     * @param id
-     * @param amount
      */
     public boolean increaseSales(Integer id, Integer amount) {
         int affectLine = itemMapper.increaseSales(id, amount);

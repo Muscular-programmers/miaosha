@@ -10,6 +10,7 @@
  */
 package pers.jun.service.impl;
 
+import org.springframework.data.redis.core.RedisTemplate;
 import pers.jun.dao.UserMapper;
 import pers.jun.dao.UserPasswordMapper;
 import pers.jun.error.BusinessException;
@@ -51,7 +52,7 @@ public class UserServiceImpl implements UserService {
     private ValidatorImpl validator;
 
     @Autowired
-    StringRedisTemplate stringRedisTemplate;
+    RedisTemplate redisTemplate;
 
     /**
      * 通过uid查询
@@ -64,6 +65,19 @@ public class UserServiceImpl implements UserService {
         UserPassword password = passwordMapper.selectByUserId(id);
         return convertFromUser(user,password);
 
+    }
+
+    /**
+     * 从缓存中查询用户信息
+     */
+    public UserModel getUserByIdIncace(Integer userId) {
+        UserModel userModel = (UserModel)redisTemplate.opsForValue().get("user_validate_id"+userId);
+        if (userModel == null) {
+            userModel = this.getUserById(userId);
+            redisTemplate.opsForValue().set("user_validate_id"+userId,userModel);
+            redisTemplate.expire("user_validate_id"+userId,10,TimeUnit.MINUTES);
+        }
+        return userModel;
     }
 
     /**
@@ -122,7 +136,7 @@ public class UserServiceImpl implements UserService {
      */
     public void saveOpt(String phone,String opt) {
         //保存到redis并设置60s的过期时间
-        stringRedisTemplate.opsForValue().set(phone,opt,60, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(phone,opt,60, TimeUnit.SECONDS);
     }
 
     /**
@@ -132,7 +146,7 @@ public class UserServiceImpl implements UserService {
      * @return
      */
     public boolean checkOpt(String phone, String opt) throws BusinessException {
-        String number = stringRedisTemplate.opsForValue().get(phone);
+        String number = (String) redisTemplate.opsForValue().get(phone);
         if(number == null){
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"验证码过期，请重新获取");
         } else if (!StringUtils.equals(number, opt)) {

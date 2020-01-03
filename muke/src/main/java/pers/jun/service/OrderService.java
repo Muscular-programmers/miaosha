@@ -25,7 +25,9 @@ import java.util.List;
  */
 public interface OrderService {
 
-    OrderModel createOrder(OrderModel orderModel) throws BusinessException;
+    void createOrder(OrderModel orderModel) throws BusinessException;
+
+    void createOrderPromo(OrderModel orderModel) throws BusinessException;
 
     // 查询所有订单
     List<OrderModel> getList(Integer userId,Integer page,Integer size) throws BusinessException;

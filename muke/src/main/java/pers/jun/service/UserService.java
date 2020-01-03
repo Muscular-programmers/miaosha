@@ -25,6 +25,9 @@ public interface UserService {
 
     UserModel getUserById(Integer id);
 
+    // 从缓存中查询用户
+    UserModel getUserByIdIncace(Integer userId);
+
     void register(UserModel userModel) throws BusinessException;
 
     UserModel validataLogin(String telephone,String password) throws BusinessException;
@@ -33,4 +36,6 @@ public interface UserService {
     void saveOpt(String phone,String opt);
 
     boolean checkOpt(String phone,String opt) throws BusinessException;
+
+
 }

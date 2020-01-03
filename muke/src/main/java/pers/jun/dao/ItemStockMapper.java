@@ -56,6 +56,8 @@ public interface ItemStockMapper {
      */
     int updateByPrimaryKeySelective(ItemStock record);
 
+    int updateStockByItemId(Integer itemId,Integer amount);
+
     /**
      * 根据商品id更新stock字段
      */

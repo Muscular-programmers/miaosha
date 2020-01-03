@@ -22,10 +22,7 @@ import pers.jun.pojo.OrderItem;
 import pers.jun.pojo.Sequence;
 import pers.jun.response.CommonReturnType;
 import pers.jun.service.*;
-import pers.jun.service.model.CartModel;
-import pers.jun.service.model.ItemModel;
-import pers.jun.service.model.OrderItemModel;
-import pers.jun.service.model.OrderModel;
+import pers.jun.service.model.*;
 import org.joda.time.DateTime;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,31 +68,44 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private CartService cartService;
 
+    @Autowired
+    private PromoService promoService;
+
 
     /**
-     * 创建订单
+     * 创建订单，此方法用于普通商品和购物车商品
      */
     @Transactional
-    public OrderModel createOrder(OrderModel orderModel) throws BusinessException {
+    public void createOrder(OrderModel orderModel) throws BusinessException {
         System.out.println(orderModel);
-        // 1.参数校验
-        if(orderModel == null)
-            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+
+        // 用户合法性验证
+        UserModel userModel = userService.getUserByIdIncace(orderModel.getUserId());
+        if(userModel == null)
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"用户信息不合法");
+
+        // 商品合法性验证
+        List<OrderItemModel> orderItemModels = orderModel.getOrderItems();
+        for (OrderItemModel orderItemModel : orderItemModels) {
+            if(itemService.getByIdIncache(orderItemModel.getItemId()) == null)
+                throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"商品不合法");
+        }
 
         // 2.添加订单
         // 默认订单状态为0
         orderModel.setStatus(0);
         orderModel.setCreateDate(new Date());
+
         // 交易流水号，生成id
         String generateOrderNo = generateOrderNo();
         orderModel.setId(generateOrderNo);
         System.out.println(convertToOrder(orderModel));
+
         int insert = orderMapper.insertSelective(convertToOrder(orderModel));
         if(insert < 1)
             throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"添加订单未知错误");
 
         // 3.减库存 AND 添加订单item AND 更新商品销量 AND 从购物车删除
-        List<OrderItemModel> orderItemModels = orderModel.getOrderItems();
 
         // 3.减库存
         boolean decreaseResult = itemService.decreaseStock(orderItemModels);
@@ -132,74 +142,74 @@ public class OrderServiceImpl implements OrderService {
             }
 
         }
-        return orderModel;
+    }
 
-        //参数校验
-        //if(userService.getUserById(userId) == null){
-        //    throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"用户不合法");
-        //}
-        //ItemModel itemModel = itemService.getById(itemId);
-        //if(itemModel == null){
-        //    throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"商品不合法");
-        //}
-        //if(amount < 0 || amount > 99){
-        //    throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"下单数量不合法");
-        //}
-        //
-        ////落单减库存/还有一种方式为支付减库存
-        //boolean reslut = itemService.decreaseStock(itemId, amount);
-        //if(!reslut){
-        //    throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
-        //}
-        //
-        ////校验活动是否正在进行
-        //if(promoId != null){
-        //    if(itemModel.getPromoModel().getId() != promoId){
-        //        throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"活动信息不正确");
-        //    }
-        //    if(itemModel.getPromoModel().getStatus() != 2){
-        //        throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"活动信息不正确");
-        //    }
-        //}
-        //
-        ////订单入库
-        //OrderModel orderModel = new OrderModel();
-        //orderModel.setItemId(itemId);
-        //orderModel.setUserId(userId);
-        //orderModel.setPromoId(promoId);
-        //orderModel.setAmount(amount);
-        ////得到当前时间
-        //Date date = new Date();
-        //System.out.println(date);
-        //DateTime now = new DateTime(date.getTime());//2013-01-14 22:45:36.484
-        //System.out.println(now);
-        //orderModel.setOrderTime(now);
-        //
-        ////如果活动正在进行，应该使价格为活动价格
-        //if(promoId != null){
-        //    orderModel.setItemPrice(itemModel.getPromoModel().getPromoItemPrice());
-        //}
-        //else{
-        //    orderModel.setItemPrice(itemModel.getPrice());
-        //}
-        //orderModel.setOrderPrice(orderModel.getItemPrice().multiply(BigDecimal.valueOf(amount)));
-        //
-        ////交易流水号，生成id
-        //orderModel.setId(generateOrderNo());
-        //
-        ////bean转换
-        //Order order = convertToOrder(orderModel);
-        //
-        //orderMapper.insertSelective(order);
-        //
-        ////更新商品销量
-        //boolean b = itemService.increaseSales(orderModel.getItemId(), orderModel.getAmount());
-        //if(!b){
-        //    throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR);
-        //}
-        //
-        ////返回前端
-        //return orderModel;
+    /**
+     * 秒杀活动商品下单操作
+     */
+    public void createOrderPromo(OrderModel orderModel) throws BusinessException {
+        // 用户合法性验证
+        UserModel userModel = userService.getUserByIdIncace(orderModel.getUserId());
+        if(userModel == null)
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"用户信息不合法");
+
+        // 商品合法性验证，同时之能秒杀一个商品
+        OrderItemModel orderItemModel = orderModel.getOrderItems().get(0);
+        if(itemService.getByIdIncache(orderItemModel.getItemId()) == null)
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"商品不合法");
+
+        //默认每个用户只能下单十个
+        int amount = orderItemModel.getAmount();
+        if(amount < 0 || amount > 10){
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"下单数量不合法");
+        }
+
+        //落单减库存/还有一种方式为支付减库存
+        boolean reslut = itemService.decreaseStockIncache(orderItemModel.getItemId(), amount);
+        if(!reslut){
+            throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
+        }
+
+        //校验活动是否正在进行，这里必须是活动中商品
+        if(orderItemModel.getPromoId() == null)
+            throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"活动信息不正确");
+
+        //获取订单中这个商品的活动信息，如果这个商品没有活动或者活动状态不为“正在活动中”则不合法
+        PromoModel promoByItemId = promoService.getPromoByItemId(orderItemModel.getItemId());
+        if(promoByItemId == null || promoByItemId.getStatus() != 2)
+            throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"活动信息不正确");
+
+        //设置订单默认状态和入库时间
+        orderModel.setStatus(0);
+        orderModel.setCreateDate(new Date());
+
+        // 交易流水号，生成id
+        String generateOrderNo = generateOrderNo();
+        orderModel.setId(generateOrderNo);
+        // 订单入库
+        int insert = orderMapper.insertSelective(convertToOrder(orderModel));
+        if(insert < 1)
+            throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"添加订单未知错误");
+
+
+        //添加订单条目
+
+        // 设置所属订单id
+        orderItemModel.setOrderId(generateOrderNo);
+
+        // *****这个有没有必要
+        orderItemModel.setPrice(promoByItemId.getPromoItemPrice().doubleValue());
+
+        // 4.添加订单item
+        int result = orderItemService.insertOrderItem(converrToOrderItem(orderItemModel));
+        if(result < 1)
+            throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"添加订单商品未知错误");
+
+        // 5. 更新商品销量
+        boolean increaseSales = itemService.increaseSales(orderItemModel.getItemId(), orderItemModel.getAmount());
+        if(!increaseSales)
+            throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"更新销量未知错误");
+
     }
 
     /**

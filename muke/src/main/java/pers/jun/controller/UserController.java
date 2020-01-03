@@ -117,15 +117,33 @@ public class UserController extends BaseController {
     @UserLoginToken
     @PostMapping("/checkLogin")
     @ApiOperation(value = "checkLogin")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "token",value = "用户token",required = true,paramType = "query")
-    })
-    public Object checkLogin(@RequestParam(name = "token") String token) throws BusinessException {
+    public Object checkLogin() throws BusinessException {
         UserModel userModel = AuthenticationInterceptor.userModelByToken;
         if(userModel == null)
             throw new BusinessException(EmBusinessError.USER_NOT_LOGIN);
         UserVo userVo = converFromUserModel(userModel);
         return CommonReturnType.create(userVo);
+    }
+
+    /**
+     * 重新生成token
+     */
+    @UserLoginToken
+    @PostMapping("/reToken")
+    @ApiOperation(value = "reToken")
+    public Object reToken() throws BusinessException {
+        UserModel userModel = AuthenticationInterceptor.userModelByToken;
+        if(userModel == null)
+            throw new BusinessException(EmBusinessError.USER_NOT_LOGIN);
+        //重新生成一个token
+        String token = JwtUtil.getToken(userModel);
+
+        // 保存到redis并设置过期时间
+        redisTemplate.opsForValue().set(token,userModel);
+        redisTemplate.expire(token,30, TimeUnit.MINUTES);
+
+        //将新的token返回
+        return CommonReturnType.create(token);
     }
 
     /**

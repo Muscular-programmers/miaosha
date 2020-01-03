@@ -16,12 +16,16 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.models.auth.In;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import pers.jun.controller.viewObject.ItemVo;
 import pers.jun.error.BusinessException;
+import pers.jun.error.EmBusinessError;
 import pers.jun.response.CommonReturnType;
+import pers.jun.service.CacheService;
 import pers.jun.service.ItemService;
+import pers.jun.service.PromoService;
 import pers.jun.service.model.ItemModel;
 import org.joda.time.format.DateTimeFormat;
 import org.springframework.beans.BeanUtils;
@@ -51,6 +55,12 @@ public class ItemController extends BaseController {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private CacheService cacheService;
+
+    @Autowired
+    private PromoService promoService;
 
     /**
      * 通过分类查找商品
@@ -126,14 +136,23 @@ public class ItemController extends BaseController {
             @ApiImplicitParam(name = "id",value = "商品id",required = true,paramType = "query")
     })
     public Object getItem(@RequestParam(name = "id")Integer id) throws BusinessException {
-        ItemModel itemModel = (ItemModel) redisTemplate.opsForValue().get("item_"+id);
+        ItemModel itemModel = null;
+
+        // 先从本地缓存中查找
+        itemModel = (ItemModel) cacheService.getFromCache("item_"+id);
         if (itemModel == null) {
-            // 如果缓存中没有，调用下层service
-            itemModel = itemService.getById(id);
-            // 存入redis缓存
-            redisTemplate.opsForValue().set("item_"+id,itemModel);
-            // 设置默认过期时间
-            redisTemplate.expire("item_"+id,10, TimeUnit.MINUTES);
+            // 如果本地缓存为空，从redis缓存中查找
+            itemModel = (ItemModel) redisTemplate.opsForValue().get("item_"+id);
+            if (itemModel == null) {
+                // 如果redis缓存中没有，调用下层service
+                itemModel = itemService.getById(id);
+                // 存入redis缓存
+                redisTemplate.opsForValue().set("item_"+id,itemModel);
+                // 设置默认过期时间
+                redisTemplate.expire("item_"+id,10, TimeUnit.MINUTES);
+            }
+            //将得到的itemModel存入本地缓存
+            cacheService.setCommonCache("item_"+id,itemModel);
         }
 
         ItemVo itemVo = convertToItemVO(itemModel);
@@ -142,9 +161,23 @@ public class ItemController extends BaseController {
     }
 
     /**
+     * 发布活动商品
+     */
+    @GetMapping(value = "/publishPromo")
+    @ApiOperation(value = "发布活动商品")
+    @ApiImplicitParam(name = "promoId",value = "发布的活动id",required = true,paramType = "query")
+    public Object publishPromo(@RequestParam Integer promoId) throws BusinessException {
+
+        if(promoId == null || promoId < 1)
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        promoService.publishPromo(promoId);
+
+        return CommonReturnType.create(null);
+    }
+
+
+    /**
      * bean转换
-     * @param itemModel
-     * @return
      */
     private ItemVo convertToItemVO(ItemModel itemModel){
         if(itemModel == null)

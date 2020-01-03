@@ -34,6 +34,7 @@ import pers.jun.response.CommonReturnType;
 import pers.jun.service.AddressService;
 import pers.jun.service.OrderService;
 import pers.jun.service.model.AddressModel;
+import pers.jun.service.model.OrderItemModel;
 import pers.jun.service.model.OrderModel;
 import pers.jun.service.model.UserModel;
 import org.joda.time.format.DateTimeFormat;
@@ -88,9 +89,16 @@ public class OrderController extends BaseController {
         checkUserLogin();
         if(orderModel == null)
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
-        orderService.createOrder(orderModel);
+
+        //通过订单中包含的商品调用不用的下层service，多个商品或者一个没有活动的商品
+        List<OrderItemModel> orderItems = orderModel.getOrderItems();
+        if(orderItems.size() > 1 || orderItems.get(0).getPromoId() == null)
+            orderService.createOrder(orderModel);
+        else
+            orderService.createOrderPromo(orderModel);
         return CommonReturnType.create(null);
     }
+
 
     /**
      * 查询订单详情

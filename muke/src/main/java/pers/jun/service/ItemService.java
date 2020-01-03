@@ -12,6 +12,7 @@ package pers.jun.service;
 
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageInfo;
+import io.swagger.models.auth.In;
 import pers.jun.error.BusinessException;
 import pers.jun.pojo.ItemScroll;
 import pers.jun.service.model.ItemModel;
@@ -41,12 +42,18 @@ public interface ItemService {
     //查看商品详情
     ItemModel getById(Integer id);
 
+    //从缓存查商品详情
+    ItemModel getByIdIncache(Integer id);
+
     //得到名称和活动（订单调用）
     //ItemModel getNameAndPromo(Integer id);
 
-    //更新库存
+    //更新库存，此方法用于购物车或非秒杀活动中的商品
     //boolean decreaseStock(Integer itemId,Integer amount);
     boolean decreaseStock(List<OrderItemModel> orderItemModels);
+
+    // 更新库存，此方法用于秒杀活动商品
+    boolean decreaseStockIncache(Integer itemId, Integer amount);
 
     //更新销量
     boolean increaseSales(Integer id,Integer amount);

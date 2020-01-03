@@ -27,4 +27,7 @@ public interface PromoService {
     PromoModel getPromoByItemId(Integer itemId);
 
     List<PromoModel> getPromoItems(int count);
+
+    // 发布活动商品
+    void publishPromo(Integer promoId);
 }

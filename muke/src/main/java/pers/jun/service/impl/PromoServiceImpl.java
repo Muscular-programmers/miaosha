@@ -10,9 +10,12 @@
  */
 package pers.jun.service.impl;
 
+import org.springframework.data.redis.core.RedisTemplate;
 import pers.jun.dao.PromoMapper;
 import pers.jun.pojo.Promo;
+import pers.jun.service.ItemService;
 import pers.jun.service.PromoService;
+import pers.jun.service.model.ItemModel;
 import pers.jun.service.model.PromoModel;
 import org.joda.time.DateTime;
 import org.springframework.beans.BeanUtils;
@@ -37,6 +40,12 @@ public class PromoServiceImpl implements PromoService {
 
     @Autowired
     private PromoMapper promoMapper;
+
+    @Autowired
+    private ItemService itemService;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     /**
      *根据商品id获取商品的活动
@@ -76,6 +85,15 @@ public class PromoServiceImpl implements PromoService {
         }
         return modelList;
 
+    }
+
+    @Override
+    public void publishPromo(Integer promoId) {
+        Promo promo = promoMapper.selectByPrimaryKey(promoId);
+        ItemModel itemModel = itemService.getById(promo.getItemId());
+
+        //在发布活动商品的时候，将商品库存存入缓存
+        redisTemplate.opsForValue().set("promo_item_id_"+itemModel.getItemId(),itemModel.getStock());
     }
 
     /**
