@@ -13,13 +13,17 @@ package pers.jun.service.impl;
 import com.sun.tools.corba.se.idl.constExpr.Or;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.format.DateTimeFormat;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pers.jun.dao.OrderMapper;
 import pers.jun.dao.SequenceMapper;
+import pers.jun.dao.StockLogMapper;
 import pers.jun.error.BusinessException;
 import pers.jun.error.EmBusinessError;
 import pers.jun.pojo.Order;
 import pers.jun.pojo.OrderItem;
 import pers.jun.pojo.Sequence;
+import pers.jun.pojo.StockLog;
 import pers.jun.response.CommonReturnType;
 import pers.jun.service.*;
 import pers.jun.service.model.*;
@@ -70,6 +74,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private PromoService promoService;
+
+    @Autowired
+    private StockLogMapper stockLogMapper;
 
 
     /**
@@ -124,14 +131,10 @@ public class OrderServiceImpl implements OrderService {
                 orderItem.setPrice(itemModel.getPrice().doubleValue());
             }
             // 4.添加订单item
-            int result = orderItemService.insertOrderItem(converrToOrderItem(orderItem));
-            if(result < 1)
-                throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"添加订单商品未知错误");
+            orderItemService.insertOrderItem(converrToOrderItem(orderItem));
 
             // 5. 更新商品销量
-            boolean increaseSales = itemService.increaseSales(orderItem.getItemId(), orderItem.getAmount());
-            if(!increaseSales)
-                throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"更新销量未知错误");
+            itemService.increaseSales(orderItem.getItemId(), orderItem.getAmount());
 
             // 6.从购物车删除
             CartModel cartModel = cartService.getCartByUserAndItem(orderModel.getUserId(),orderItem.getItemId());
@@ -147,7 +150,7 @@ public class OrderServiceImpl implements OrderService {
     /**
      * 秒杀活动商品下单操作
      */
-    public void createOrderPromo(OrderModel orderModel) throws BusinessException {
+    public void createOrderPromo(OrderModel orderModel,String stockLogId) throws BusinessException {
         // 用户合法性验证
         UserModel userModel = userService.getUserByIdIncace(orderModel.getUserId());
         if(userModel == null)
@@ -155,19 +158,14 @@ public class OrderServiceImpl implements OrderService {
 
         // 商品合法性验证，同时之能秒杀一个商品
         OrderItemModel orderItemModel = orderModel.getOrderItems().get(0);
-        if(itemService.getByIdIncache(orderItemModel.getItemId()) == null)
+        Integer itemId = orderItemModel.getItemId();
+        Integer amount = orderItemModel.getAmount();
+        if(itemService.getByIdIncache(itemId) == null)
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"商品不合法");
 
         //默认每个用户只能下单十个
-        int amount = orderItemModel.getAmount();
         if(amount < 0 || amount > 10){
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"下单数量不合法");
-        }
-
-        //落单减库存/还有一种方式为支付减库存
-        boolean reslut = itemService.decreaseStockIncache(orderItemModel.getItemId(), amount);
-        if(!reslut){
-            throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
         }
 
         //校验活动是否正在进行，这里必须是活动中商品
@@ -175,9 +173,15 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"活动信息不正确");
 
         //获取订单中这个商品的活动信息，如果这个商品没有活动或者活动状态不为“正在活动中”则不合法
-        PromoModel promoByItemId = promoService.getPromoByItemId(orderItemModel.getItemId());
+        PromoModel promoByItemId = promoService.getPromoByItemId(itemId);
         if(promoByItemId == null || promoByItemId.getStatus() != 2)
             throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"活动信息不正确");
+
+        //落单减库存/还有一种方式为支付减库存
+        boolean reslut = itemService.decreaseStockIncache(itemId, amount);
+        if(!reslut){
+            throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
+        }
 
         //设置订单默认状态和入库时间
         orderModel.setStatus(0);
@@ -197,18 +201,49 @@ public class OrderServiceImpl implements OrderService {
         // 设置所属订单id
         orderItemModel.setOrderId(generateOrderNo);
 
-        // *****这个有没有必要
+        // 设置价格
         orderItemModel.setPrice(promoByItemId.getPromoItemPrice().doubleValue());
 
         // 4.添加订单item
-        int result = orderItemService.insertOrderItem(converrToOrderItem(orderItemModel));
-        if(result < 1)
-            throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"添加订单商品未知错误");
+        orderItemService.insertOrderItem(converrToOrderItem(orderItemModel));
 
-        // 5. 更新商品销量
-        boolean increaseSales = itemService.increaseSales(orderItemModel.getItemId(), orderItemModel.getAmount());
-        if(!increaseSales)
-            throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"更新销量未知错误");
+        // 5.更新商品销量
+        itemService.increaseSales(itemId, amount);
+
+        //if(true)
+        //throw new BusinessException(EmBusinessError.UNKNOWN_ERROR);
+
+        // 6.将库存流水状态更新为2，即下单成功
+        StockLog stockLog = stockLogMapper.selectByPrimaryKey(stockLogId);
+        if(stockLog == null)
+            throw new BusinessException(EmBusinessError.UNKNOWN_ERROR);
+        stockLog.setStatus(2);
+        stockLogMapper.updateByPrimaryKeySelective(stockLog);
+
+
+
+        //try {
+        //    Thread.sleep(3000);
+        //} catch (InterruptedException e) {
+        //    e.printStackTrace();
+        //}
+
+        // 订单入库的所有操作都完成以后，再通过rocketMQ发送消息异步更新数据库库存
+        // 所有操作完成以后，事务提交也有可能会出错，所以可以将rocketMQ消息放在事务提交以后再发送
+        // springboot的@Transaction也提供给了我们这样的操作----TransactionSynchronizationManager
+        //TransactionSynchronizationManager.regiasyncReduceStocksterSynchronization(new TransactionSynchronizationAdapter() {
+        //    @Override
+        //    // 这个方法会在最近的@Transaction成功commit后才会去执行
+        //    public void afterCommit() {
+        //        boolean decreaseStock = itemService.asyncDecreaseStock(itemId, amount1);
+        //        // 但是如果发送失败，也就没办法回滚了
+        //        //if (!decreaseStock) {
+        //        //    itemService.increaseStock(itemId, amount1);
+        //        //    throw new BusinessException(EmBusinessError.MQ_SEND_FAIL);
+        //        //}
+        //    }
+        //});
+
 
     }
 

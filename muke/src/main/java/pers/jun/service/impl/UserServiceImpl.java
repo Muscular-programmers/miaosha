@@ -74,7 +74,7 @@ public class UserServiceImpl implements UserService {
         UserModel userModel = (UserModel)redisTemplate.opsForValue().get("user_validate_id"+userId);
         if (userModel == null) {
             userModel = this.getUserById(userId);
-            redisTemplate.opsForValue().set("user_validate_id"+userId,userModel);
+            redisTemplate.opsForValue().set("user_validate_id_"+userId,userModel);
             redisTemplate.expire("user_validate_id"+userId,10,TimeUnit.MINUTES);
         }
         return userModel;

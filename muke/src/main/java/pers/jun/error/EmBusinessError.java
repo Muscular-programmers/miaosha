@@ -36,6 +36,7 @@ public enum EmBusinessError implements CommonError {
     //30000开头为交易错误
     STOCK_NOT_ENOUGH(30001,"库存不足"),
     ORDER_UNKOWN_ERROR(30002,"订单相关未知错误"),
+    MQ_SEND_FAIL(30003,"异步同步库存错误"),
 
     //40000开头为地址操作错误
     ADDRESS_UNKONW_ERROR(40001,"地址信息操作未知错误")

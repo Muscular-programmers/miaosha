@@ -18,6 +18,7 @@ import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.redis.core.RedisTemplate;
 import pers.jun.config.UserLoginToken;
 import pers.jun.controller.viewObject.CartVo;
 import pers.jun.controller.viewObject.ItemVo;
@@ -27,11 +28,13 @@ import pers.jun.dao.ItemMapper;
 import pers.jun.error.BusinessException;
 import pers.jun.error.EmBusinessError;
 import pers.jun.interceptor.AuthenticationInterceptor;
+import pers.jun.mq.MqProducer;
 import pers.jun.pojo.Cart;
 import pers.jun.pojo.Item;
 import pers.jun.pojo.OrderItem;
 import pers.jun.response.CommonReturnType;
 import pers.jun.service.AddressService;
+import pers.jun.service.ItemService;
 import pers.jun.service.OrderService;
 import pers.jun.service.model.AddressModel;
 import pers.jun.service.model.OrderItemModel;
@@ -78,6 +81,15 @@ public class OrderController extends BaseController {
     @Autowired
     private AddressService addressService;
 
+    @Autowired
+    private ItemService itemService;
+
+    @Autowired
+    private MqProducer mqProducer;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
+
     /**
      * 创建订单
      */
@@ -94,8 +106,21 @@ public class OrderController extends BaseController {
         List<OrderItemModel> orderItems = orderModel.getOrderItems();
         if(orderItems.size() > 1 || orderItems.get(0).getPromoId() == null)
             orderService.createOrder(orderModel);
-        else
-            orderService.createOrderPromo(orderModel);
+        else{
+            // 先判断该商品是否已卖完，若已卖完直接返回
+            if (redisTemplate.hasKey("promo_item_id_over_"+orderItems.get(0).getItemId())) {
+                throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
+            }
+
+            //orderService.createOrderPromo(orderModel);
+            //在下单之前，加入库存流水初始化
+            String stockLog = itemService.initStockLog(orderItems.get(0).getItemId(), orderItems.get(0).getAmount());
+
+            //再去完成对应的下单事务型消息机制
+            boolean result = mqProducer.transactionAsyncReduceStock(orderModel, stockLog);
+            if(!result)
+                throw new BusinessException(EmBusinessError.MQ_SEND_FAIL,"下单失败，库存不足或同步消息失败");
+        }
         return CommonReturnType.create(null);
     }
 

@@ -55,6 +55,12 @@ public interface ItemService {
     // 更新库存，此方法用于秒杀活动商品
     boolean decreaseStockIncache(Integer itemId, Integer amount);
 
+    // 异步更新库存
+    boolean asyncDecreaseStock(Integer itemId,Integer amount);
+
+    // 回滚库存
+    boolean increaseStock(Integer itemId,Integer amount);
+
     //更新销量
     boolean increaseSales(Integer id,Integer amount);
 
@@ -66,5 +72,8 @@ public interface ItemService {
 
     //查询图片轮播的商品
     List<ItemScroll> getHomeScroll();
+
+    //初始化库存流水
+    String initStockLog(Integer itemId,Integer amount);
 
 }

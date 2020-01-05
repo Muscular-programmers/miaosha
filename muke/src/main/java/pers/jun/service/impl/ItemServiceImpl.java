@@ -20,12 +20,14 @@ import pers.jun.controller.viewObject.ItemVo;
 import pers.jun.dao.ItemMapper;
 import pers.jun.dao.ItemScrollMapper;
 import pers.jun.dao.ItemStockMapper;
+import pers.jun.dao.StockLogMapper;
 import pers.jun.error.BusinessException;
 import pers.jun.error.EmBusinessError;
 import pers.jun.mq.MqProducer;
 import pers.jun.pojo.Item;
 import pers.jun.pojo.ItemScroll;
 import pers.jun.pojo.ItemStock;
+import pers.jun.pojo.StockLog;
 import pers.jun.service.ItemService;
 import pers.jun.service.PromoService;
 import pers.jun.service.model.ItemModel;
@@ -39,10 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -76,6 +75,9 @@ public class ItemServiceImpl implements ItemService {
 
     @Autowired
     private MqProducer mqProducer;
+
+    @Autowired
+    private StockLogMapper stockLogMapper;
 
     @Override
     public ItemModel createItem(ItemModel itemModel) throws BusinessException {
@@ -219,7 +221,7 @@ public class ItemServiceImpl implements ItemService {
         ItemModel itemModel = (ItemModel)redisTemplate.opsForValue().get("item_validate_id"+id);
         if (itemModel == null) {
             itemModel = this.getById(id);
-            redisTemplate.opsForValue().set("item_validate_id"+id,itemModel);
+            redisTemplate.opsForValue().set("item_validate_id_"+id,itemModel);
             redisTemplate.expire("item_validate_id"+id,10, TimeUnit.MINUTES);
         }
         return itemModel;
@@ -273,18 +275,37 @@ public class ItemServiceImpl implements ItemService {
     public boolean decreaseStockIncache(Integer itemId,Integer amount) {
         //返回值result表示操作后的值
         Long result = redisTemplate.opsForValue().increment("promo_item_id_" + itemId, amount * -1);
-        if(result >= 0){
-            boolean reduceStock = mqProducer.asyncReduceStock(itemId, amount);
-            if (!reduceStock) {
-                redisTemplate.opsForValue().increment("promo_item_id_" + itemId, amount);
-                return false;
-            }
+        if(result > 0){
+            //boolean reduceStock = mqProducer.asyncReduceStock(itemId, amount);
+            //if (!reduceStock) {
+            //    redisTemplate.opsForValue().increment("promo_item_id_" + itemId, amount);
+            //    return false;
+            //}
+            return true;
+        } else if(result == 0){
+            // 当库存为0的时候，直接返回false
+            redisTemplate.opsForValue().set("promo_item_id_over_" + itemId,true);
             return true;
         }
         //若操作后返回的result小于0，库布不足，将减掉的库存加回去，返回错误
         else
-            redisTemplate.opsForValue().increment("promo_item_id_"+itemId, amount);
+            increaseStock(itemId,amount);
         return false;
+    }
+
+    /**
+     * 异步更新库存
+     */
+    public boolean asyncDecreaseStock(Integer itemId, Integer amount) {
+        return mqProducer.asyncReduceStock(itemId, amount);
+    }
+
+    /**
+     * 回滚库存
+     */
+    public boolean increaseStock(Integer itemId, Integer amount) {
+        redisTemplate.opsForValue().increment("promo_item_id_"+itemId, amount);
+        return true;
     }
 
     /**
@@ -335,6 +356,22 @@ public class ItemServiceImpl implements ItemService {
     public List<ItemScroll> getHomeScroll() {
         List<ItemScroll> scrollList = itemScrollMapper.getList();
         return scrollList;
+    }
+
+    /**
+     * 初始化库存流水
+     */
+    @Transactional
+    public String initStockLog(Integer itemId, Integer amount) {
+        StockLog stockLog = new StockLog();
+        stockLog.setAmount(amount);
+        stockLog.setItemId(itemId);
+        stockLog.setStockLogId(UUID.randomUUID().toString().replace("-",""));
+        // 默认状态为1
+        stockLog.setStatus(1);
+
+        stockLogMapper.insertSelective(stockLog);
+        return stockLog.getStockLogId();
     }
 
     /**
