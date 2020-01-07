@@ -37,6 +37,9 @@ public class ItemVo {
     //商品价格
     private BigDecimal price;
 
+    //商品活动价格
+    private BigDecimal promoPrice;
+
     //商品库存
     private Integer stock;
 

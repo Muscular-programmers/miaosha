@@ -10,6 +10,7 @@
  */
 package pers.jun.service;
 
+import com.github.pagehelper.Page;
 import pers.jun.error.BusinessException;
 import pers.jun.service.model.OrderModel;
 
@@ -30,7 +31,7 @@ public interface OrderService {
     void createOrderPromo(OrderModel orderModel,String stockLogId) throws BusinessException;
 
     // 查询所有订单
-    List<OrderModel> getList(Integer userId,Integer page,Integer size) throws BusinessException;
+    Page<OrderModel> getList(Integer userId, Integer page, Integer size) throws BusinessException;
 
     // 根据id查询订单
     OrderModel orderById(String orderId) throws BusinessException;

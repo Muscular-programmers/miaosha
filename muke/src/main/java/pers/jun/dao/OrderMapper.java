@@ -1,5 +1,6 @@
 package pers.jun.dao;
 
+import com.github.pagehelper.Page;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import pers.jun.pojo.Order;
@@ -58,7 +59,7 @@ public interface OrderMapper {
     int updateByPrimaryKey(Order record);
 
     // 查询所有用户订单
-    List<OrderModel> selectAll(@Param("userId") Integer userId, @Param("page") Integer page, @Param("size") Integer size);
+    Page<OrderModel> selectAll(Integer userId);
 
     // 查询用户订单详情及订单项
     OrderModel getOrderAndDetail(String orderId);

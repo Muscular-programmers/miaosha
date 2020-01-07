@@ -67,11 +67,9 @@ public class PromoServiceImpl implements PromoService {
 
     /**
      * 查询所有活动中的商品或者查询指定数量处于活动中的商品
-     * @param count
-     * @return
      */
-    public List<PromoModel> getPromoItems(int count){
-        List<Promo> list = promoMapper.getList(count);
+    public List<PromoModel> getPromoItems(){
+        List<Promo> list = promoMapper.getList();
         List<PromoModel> modelList = convertToPromoModelList(list);
 
         //使用迭代器在遍历list的时候删除

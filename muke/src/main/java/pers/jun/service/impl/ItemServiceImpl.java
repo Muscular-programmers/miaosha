@@ -105,7 +105,7 @@ public class ItemServiceImpl implements ItemService {
      * 查询所有
      * @return
      */
-            public Page<ItemModel> getList(String key, Integer page, Integer size, String sort, String priceGt, String priceLte) {
+    public Page<ItemModel> getList(String key, Integer page, Integer size, String sort, String priceGt, String priceLte) {
         Page<Item> itemList = null;
 
         // 不为空，模糊搜索
@@ -178,6 +178,28 @@ public class ItemServiceImpl implements ItemService {
         return itemModelPage;
     }
 
+    /**
+     * 活动中的所有商品
+     */
+    public Page<ItemModel> getPromoItems(Integer page, Integer size, String sort, String priceGt, String priceLte) {
+        Page<Item> itemList = null;
+        // 价格从低到高排序（sort=1）
+        if (StringUtils.isNotBlank(sort) && Integer.valueOf(sort) == 1) {
+            PageHelper.startPage(page,size);
+            PageHelper.orderBy("price asc");
+            itemList = itemMapper.getPromoItems();
+            // 价格从高到低排序（sort=-1）
+        } else if(StringUtils.isNotBlank(sort) && Integer.valueOf(sort) == -1){
+            PageHelper.startPage(page,size);
+            PageHelper.orderBy("price desc");
+            itemList = itemMapper.getPromoItems();
+        } else{
+            PageHelper.startPage(page,size);
+            itemList = itemMapper.getPromoItems();
+        }
+        return converToItemModelList(itemList);
+    }
+
 
     /**
      * 通过分类查找
@@ -208,8 +230,8 @@ public class ItemServiceImpl implements ItemService {
         //表示存在还未结束的活动
         if(promoModel != null && promoModel.getStatus() != 3){
             itemModel.setPromoModel(promoModel);
+            itemModel.setPromoPrice(promoModel.getPromoItemPrice());
         }
-
         return itemModel;
 
     }
@@ -330,7 +352,10 @@ public class ItemServiceImpl implements ItemService {
     }
 
     //根据活动进行查询商品
-    public List<ItemModel> getPromoItems(List<PromoModel> promoItems) {
+    public List<ItemModel> getPromoHotItems() {
+        //查询promo表中处于活动中的商品
+        List<PromoModel> promoItems = promoService.getPromoItems();
+
         List<ItemModel> list = new ArrayList<>();
         for (PromoModel promoItem : promoItems) {
             Item item = itemMapper.selectByPrimaryKey(promoItem.getItemId());

@@ -12,11 +12,13 @@ package pers.jun.controller;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
+import com.github.pagehelper.Page;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.ibatis.annotations.Mapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.RedisTemplate;
 import pers.jun.config.UserLoginToken;
@@ -54,6 +56,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 〈一句话功能简述〉<br>
@@ -199,10 +202,13 @@ public class OrderController extends BaseController {
         checkUserLogin();
 
         //调用service
-        List<OrderModel> modelList = orderService.getList(userId,page,size);
+        Page<OrderModel> modelList = orderService.getList(userId,page,size);
         //bean转换
-        List<OrderVo> orderVos = converToOderVoList(modelList);
-        return CommonReturnType.create(orderVos);
+        Page<OrderVo> orderVos = converToOderVoList(modelList);
+        Map<String,Object> map = new HashMap<>();
+        map.put("data",orderVos);
+        map.put("total",orderVos.getTotal());
+        return CommonReturnType.create(map);
     }
 
     /**
@@ -237,15 +243,15 @@ public class OrderController extends BaseController {
     /**
      * bean转换
      */
-    private List<OrderVo> converToOderVoList(List<OrderModel> orderModels) throws BusinessException {
+    private Page<OrderVo> converToOderVoList(Page<OrderModel> orderModels) throws BusinessException {
         //判空
         if(orderModels == null)
             return null;
-        List<OrderVo> orderVos = new ArrayList<>();
+        Page<OrderVo> orderVos = new Page<>();
         for (OrderModel orderModel : orderModels) {
-            OrderVo orderVo = converToOderVo(orderModel);
-            orderVos.add(orderVo);
+            orderVos.add(converToOderVo(orderModel));
         }
+        BeanUtils.copyProperties(orderModels,orderVos);
         return orderVos;
     }
 

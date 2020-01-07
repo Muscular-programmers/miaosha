@@ -10,11 +10,14 @@
  */
 package pers.jun.service.impl;
 
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.sun.tools.corba.se.idl.constExpr.Or;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.format.DateTimeFormat;
 import org.springframework.transaction.support.TransactionSynchronizationAdapter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import pers.jun.dao.OrderItemMapper;
 import pers.jun.dao.OrderMapper;
 import pers.jun.dao.SequenceMapper;
 import pers.jun.dao.StockLogMapper;
@@ -74,6 +77,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private PromoService promoService;
+
+    @Autowired
+    private OrderItemMapper orderItemMapper;
 
     @Autowired
     private StockLogMapper stockLogMapper;
@@ -250,15 +256,13 @@ public class OrderServiceImpl implements OrderService {
     /**
      * 查询所有订单
      */
-    public List<OrderModel> getList(Integer userId,Integer page,Integer size) throws BusinessException {
+    public Page<OrderModel> getList(Integer userId,Integer page,Integer size) throws BusinessException {
         if(page == null || size == null)
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"分页参数不合法");
         //查询订单信息
-        // 得到关于分页的参数：(page - 1) * size & size
-        int temp = (page - 1) * size;
-        temp = temp > 0 ? temp : 0;
-        System.out.println(userId + "," + temp + "," + size);
-        List<OrderModel> orders = orderMapper.selectAll(userId,temp,size);
+        PageHelper.startPage(page,size);
+        PageHelper.orderBy("create_date desc");
+        Page<OrderModel> orders = orderMapper.selectAll(userId);
         // 关于图片，只要第一张
         for (OrderModel order : orders) {
             List<OrderItemModel> orderItems = order.getOrderItems();

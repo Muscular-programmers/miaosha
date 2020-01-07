@@ -74,7 +74,7 @@ public class MqConsumer {
                 Integer itemId = (Integer) map.get("itemId");
                 Integer amount = (Integer) map.get("amount");
                 int decrease = itemStockMapper.updateStockByItemId(itemId, amount);
-                //如果操作失败。。。。。。。。。
+                //如果操作失败，我们选择的体系就是ni
 
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
             }

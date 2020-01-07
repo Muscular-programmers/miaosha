@@ -36,6 +36,9 @@ public interface ItemService {
     //浏览商品
     Page<ItemModel> getList(String key, Integer page, Integer size, String sort, String priceGt, String priceLte);
 
+    //所有活动中的商品
+    Page<ItemModel> getPromoItems(Integer page, Integer size, String sort, String priceGt, String priceLte);
+
     //通过分类查找查找商品
     List<ItemModel> getByCategory(Integer categoryId);
 
@@ -68,12 +71,11 @@ public interface ItemService {
     List<ItemModel> getPopular(int count);
 
     //根据活动进行查询商品
-    List<ItemModel> getPromoItems(List<PromoModel> promoItems);
+    List<ItemModel> getPromoHotItems();
 
     //查询图片轮播的商品
     List<ItemScroll> getHomeScroll();
 
     //初始化库存流水
     String initStockLog(Integer itemId,Integer amount);
-
 }

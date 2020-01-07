@@ -96,14 +96,40 @@ public class ItemController extends BaseController {
             @ApiImplicitParam(name = "priceLte",value = "按价格筛选最高价",paramType = "query")
     })
     public CommonReturnType itemList(@RequestParam(name = "key",required = false) String key,
-                           @RequestParam(name = "page") Integer page,
-                           @RequestParam(name = "size") Integer size,
-                           @RequestParam(name = "sort",required = false) String sort,
-                           @RequestParam(name = "priceGt",required = false) String priceGt,
-                           @RequestParam(name = "priceLte",required = false) String priceLte) throws BusinessException {
+                                     @RequestParam(name = "page") Integer page,
+                                     @RequestParam(name = "size") Integer size,
+                                     @RequestParam(name = "sort",required = false) String sort,
+                                     @RequestParam(name = "priceGt",required = false) String priceGt,
+                                     @RequestParam(name = "priceLte",required = false) String priceLte) throws BusinessException {
 
         Map<String,Object> map = new HashMap<>();
         Page<ItemModel> list = itemService.getList(key, page, size, sort, priceGt, priceLte);
+        Page<ItemVo> voList = convertoItemVoList(list);
+        map.put("data",voList);
+        map.put("total",voList.getTotal());
+        return CommonReturnType.create(map);
+    }
+
+    /**
+     * 获取所有活动中的商品
+     */
+    @GetMapping(value = "/promoItems")
+    @ApiOperation(value = "获取所有商品")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "page",value = "分页显示页码",paramType = "query"),
+            @ApiImplicitParam(name = "size",value = "分页中每页显示数据",paramType = "query"),
+            @ApiImplicitParam(name = "sort",value = "排序方式",paramType = "query"),
+            @ApiImplicitParam(name = "priceGt",value = "按价格筛选最低价",paramType = "query"),
+            @ApiImplicitParam(name = "priceLte",value = "按价格筛选最高价",paramType = "query")
+    })
+    public CommonReturnType listPromoItem(@RequestParam(name = "page") Integer page,
+                                     @RequestParam(name = "size") Integer size,
+                                     @RequestParam(name = "sort",required = false) String sort,
+                                     @RequestParam(name = "priceGt",required = false) String priceGt,
+                                     @RequestParam(name = "priceLte",required = false) String priceLte) throws BusinessException {
+
+        Map<String,Object> map = new HashMap<>();
+        Page<ItemModel> list = itemService.getPromoItems(page, size, sort, priceGt, priceLte);
         Page<ItemVo> voList = convertoItemVoList(list);
         map.put("data",voList);
         map.put("total",voList.getTotal());
@@ -146,6 +172,8 @@ public class ItemController extends BaseController {
             if (itemModel == null) {
                 // 如果redis缓存中没有，调用下层service
                 itemModel = itemService.getById(id);
+                if(itemModel == null)
+                    throw new BusinessException(EmBusinessError.UNKNOWN_ERROR,"商品id不合法，不存在该商品");
                 // 存入redis缓存
                 redisTemplate.opsForValue().set("item_"+id,itemModel);
                 // 设置默认过期时间

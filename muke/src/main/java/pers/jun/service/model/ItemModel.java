@@ -34,10 +34,13 @@ public class ItemModel implements Serializable {
     @NotBlank(message = "商品名称不能为空")
     private String title;
 
-    //商品价格
+    //商品原价格
     @NotNull(message = "价格不能不填")
     @Min(value = 0,message = "价格不能小于0")
     private BigDecimal price;
+
+    //商品活动价格 若存在活动则为活动价
+    private BigDecimal promoPrice;
 
     //商品库存
     @NotNull(message = "库存不能不填")

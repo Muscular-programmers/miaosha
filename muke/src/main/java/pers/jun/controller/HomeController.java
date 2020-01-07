@@ -102,7 +102,6 @@ public class HomeController extends BaseController{
         /**
          * 3. 得到秒杀进行中的商品
          */
-        int promoCount = 7;
         HashMap<String,Object> promoMap = new HashMap<>();
         // 设置参考值
         promoMap.put("id",2);
@@ -113,10 +112,8 @@ public class HomeController extends BaseController{
         promoMap.put("status",1);
         promoMap.put("type",3);
 
-        //查询promo表中处于活动中的商品
-        List<PromoModel> promoItems = promoService.getPromoItems(promoCount);
         //根据活动信息中的商品id查询商品信息
-        List<ItemModel> itemModels = itemService.getPromoItems(promoItems);
+        List<ItemModel> itemModels = itemService.getPromoHotItems();
         List<ItemVo> promoItemsVO = convertToItemVOList(itemModels);
         promoMap.put("panelContents",promoItemsVO);
         list.add(promoMap);

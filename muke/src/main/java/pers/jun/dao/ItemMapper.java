@@ -56,6 +56,7 @@ public interface ItemMapper {
      *
      * @mbg.generated
      */
+
     int updateByPrimaryKey(Item record);
 
     /**
@@ -79,7 +80,14 @@ public interface ItemMapper {
     List<Item> getPopular(int count);
 
     /**
+     * 查询所有活动中的商品
+     * @return
+     */
+    Page<Item> getPromoItems();
+
+    /**
      * 模糊查找
      */
     Page<Item> getListByName(String key);
+
 }

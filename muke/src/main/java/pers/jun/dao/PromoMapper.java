@@ -57,5 +57,5 @@ public interface PromoMapper {
      */
     int updateByPrimaryKey(Promo record);
 
-    List<Promo> getList(Integer count);
+    List<Promo> getList();
 }

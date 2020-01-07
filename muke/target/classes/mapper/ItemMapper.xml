@@ -184,4 +184,17 @@
     from item
     where title LIKE CONCAT('%',#{key},'%')
   </select>
+
+  <!--查询活动中的商品-->
+  <select id="getPromoItems" resultMap="BaseResultMap">
+    select a.*,b.promo_item_price price
+    from
+        (select item.id,item.title,item.description,item.sales,item.img_url,item.category,it.stock from item
+        left join
+        (select item_id,stock from item_stock) it
+        on item.id = it.item_id) a
+    right join
+        (select promo.* from promo where NOW() between start_date and end_date ) b
+    on a.id = b.item_id
+  </select>
 </mapper>

@@ -145,10 +145,9 @@
   </update>
 
   <!--查询所有或指定数量-->
-  <select id="getList" parameterType="integer" resultMap="BaseResultMap">
+  <select id="getList" resultMap="BaseResultMap">
     select
     <include refid="Base_Column_List" />
     from promo
-    limit #{count}
   </select>
 </mapper>
