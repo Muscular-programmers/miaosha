@@ -19,6 +19,8 @@ import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.annotations.Mapper;
+import org.omg.CORBA.COMM_FAILURE;
+import org.springframework.beans.BeansException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.RedisTemplate;
 import pers.jun.config.UserLoginToken;
@@ -38,6 +40,7 @@ import pers.jun.response.CommonReturnType;
 import pers.jun.service.AddressService;
 import pers.jun.service.ItemService;
 import pers.jun.service.OrderService;
+import pers.jun.service.PromoService;
 import pers.jun.service.model.AddressModel;
 import pers.jun.service.model.OrderItemModel;
 import pers.jun.service.model.OrderModel;
@@ -68,7 +71,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/order")
-@Api(tags = "订单管理模块")
+@Api(tags = "OrderController")
 @CrossOrigin(allowCredentials = "true",allowedHeaders = "*")//解决跨域请求报错的问题 视频3-8
 public class OrderController extends BaseController {
 
@@ -85,6 +88,9 @@ public class OrderController extends BaseController {
     private AddressService addressService;
 
     @Autowired
+    private PromoService promoService;
+
+    @Autowired
     private ItemService itemService;
 
     @Autowired
@@ -92,6 +98,26 @@ public class OrderController extends BaseController {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    /**
+     * 生成秒杀令牌
+     */
+    @UserLoginToken
+    @PostMapping(value = "/generateToken")
+    @ApiOperation(value = "创建订单")
+    public Object generateToken(@RequestParam(name="itemId")Integer itemId,
+                                @RequestParam(name="promoId")Integer promoId) throws BusinessException {
+        //判断用户是否登录
+        UserModel userModel = checkUserLogin();
+
+        //生成秒杀令牌
+        String secondKillToken = promoService.generateSecondKillToken(promoId, userModel.getId(), itemId);
+
+        if(secondKillToken == null)
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"秒杀令牌生成失败");
+
+        return CommonReturnType.create(secondKillToken);
+    }
 
     /**
      * 创建订单
@@ -105,25 +131,74 @@ public class OrderController extends BaseController {
         if(orderModel == null)
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
 
+        orderService.createOrder(orderModel);
+
         //通过订单中包含的商品调用不用的下层service，多个商品或者一个没有活动的商品
-        List<OrderItemModel> orderItems = orderModel.getOrderItems();
-        if(orderItems.size() > 1 || orderItems.get(0).getPromoId() == null)
-            orderService.createOrder(orderModel);
-        else{
-            // 先判断该商品是否已卖完，若已卖完直接返回
-            if (redisTemplate.hasKey("promo_item_id_over_"+orderItems.get(0).getItemId())) {
-                throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
-            }
+        //List<OrderItemModel> orderItems = orderModel.getOrderItems();
+        //if(orderItems.size() > 1 || orderItems.get(0).getPromoId() == null)
+        //    orderService.createOrder(orderModel);
+        //else{
+        //    //校验秒杀令牌是否正确
+        //    //redisTemplate.opsForValue().get("promo_token_"+promo)
+        //
+        //    // 先判断该商品是否已卖完，若已卖完直接返回
+        //    if (redisTemplate.hasKey("promo_item_id_over_"+orderItems.get(0).getItemId())) {
+        //        throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
+        //    }
+        //
+        //    //orderService.createOrderPromo(orderModel);
+        //    //在下单之前，加入库存流水初始化
+        //    String stockLog = itemService.initStockLog(orderItems.get(0).getItemId(), orderItems.get(0).getAmount());
+        //
+        //    //再去完成对应的下单事务型消息机制
+        //    boolean result = mqProducer.transactionAsyncReduceStock(orderModel, stockLog);
+        //    if(!result)
+        //        throw new BusinessException(EmBusinessError.MQ_SEND_FAIL,"下单失败，库存不足或同步消息失败");
+        //}
+        return CommonReturnType.create(null);
+    }
 
-            //orderService.createOrderPromo(orderModel);
-            //在下单之前，加入库存流水初始化
-            String stockLog = itemService.initStockLog(orderItems.get(0).getItemId(), orderItems.get(0).getAmount());
+    /**
+     * 创建秒杀订单
+     */
+    @UserLoginToken
+    @PostMapping(value = "/createPromo")
+    @ApiOperation(value = "创建秒杀订单")
+    public Object createPromo(@RequestBody OrderModel orderModel,
+                              @RequestParam(name = "promoToken")String promoToken) throws BusinessException {
+        //判断用户是否登录
+        UserModel userModel = checkUserLogin();
 
-            //再去完成对应的下单事务型消息机制
-            boolean result = mqProducer.transactionAsyncReduceStock(orderModel, stockLog);
-            if(!result)
-                throw new BusinessException(EmBusinessError.MQ_SEND_FAIL,"下单失败，库存不足或同步消息失败");
+        OrderItemModel itemModel = orderModel.getOrderItems().get(0);
+        Integer itemId = itemModel.getItemId();
+        Integer promoId = itemModel.getPromoId();
+        Integer amount = itemModel.getAmount();
+        Integer userId = userModel.getId();
+        //校验秒杀令牌是否正确
+        String inRedisPromoToken = (String) redisTemplate.opsForValue().get("promo_token_"+promoId+"_userId_"+userId+"_itemId_"+itemId);
+        if(inRedisPromoToken == null) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"秒杀令牌校验失败");
         }
+
+        if (!StringUtils.equals(promoToken, inRedisPromoToken)) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"秒杀令牌校验失败");
+        }
+
+        // 先判断该商品是否已售罄，若已卖完直接返回
+        if (redisTemplate.hasKey("promo_item_id_over_"+itemId)) {
+            throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
+        }
+
+        //orderService.createOrderPromo(orderModel);
+        //在下单之前，加入库存流水初始化
+        String stockLog = itemService.initStockLog(itemId, amount);
+
+        //再去完成对应的下单事务型消息机制
+        boolean result = mqProducer.transactionAsyncReduceStock(orderModel, stockLog);
+        if(!result) {
+            throw new BusinessException(EmBusinessError.MQ_SEND_FAIL,"下单失败，库存不足或同步消息失败");
+        }
+
         return CommonReturnType.create(null);
     }
 
@@ -159,6 +234,21 @@ public class OrderController extends BaseController {
         }
         orderService.delOrder(orderId);
         return CommonReturnType.create(null);
+    }
+
+    @UserLoginToken
+    @GetMapping(value = "/payOrder")
+    @ApiOperation(value = "支付订单")
+    public CommonReturnType payOrder(@RequestParam(name = "orderId") String orderId) throws BusinessException {
+        //判断用户是否登录
+        checkUserLogin();
+        if (StringUtils.isBlank(orderId)) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        }
+        Map<String,Object> map = new HashMap<>();
+        map.put("qrCode","");
+        map.put("id","");
+        return CommonReturnType.create(map);
     }
 
     //@UserLoginToken
@@ -224,12 +314,13 @@ public class OrderController extends BaseController {
     /**
      * bean转换
      */
-    private OrderVo converToOderVo(OrderModel orderModel) throws BusinessException {
+    private OrderVo converToOderVo(OrderModel orderModel) throws BusinessException{
         //判空
         if(orderModel == null)
             return null;
         OrderVo orderVo = new OrderVo();
         BeanUtils.copyProperties(orderModel,orderVo);
+
         // 设置价格
         orderVo.setTotalPrice(new BigDecimal(orderModel.getTotalPrice()));
         // 设置订单地址详细信息
@@ -245,8 +336,9 @@ public class OrderController extends BaseController {
      */
     private Page<OrderVo> converToOderVoList(Page<OrderModel> orderModels) throws BusinessException {
         //判空
-        if(orderModels == null)
+        if(orderModels == null) {
             return null;
+        }
         Page<OrderVo> orderVos = new Page<>();
         for (OrderModel orderModel : orderModels) {
             orderVos.add(converToOderVo(orderModel));
