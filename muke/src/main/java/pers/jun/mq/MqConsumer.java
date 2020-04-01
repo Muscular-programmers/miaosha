@@ -23,8 +23,10 @@ import org.apache.rocketmq.common.message.MessageExt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import pers.jun.dao.ItemMapper;
 import pers.jun.dao.ItemStockMapper;
 import pers.jun.pojo.ItemStock;
+import pers.jun.service.ItemService;
 
 import javax.annotation.PostConstruct;
 import java.util.List;
@@ -46,6 +48,9 @@ public class MqConsumer {
 
     @Value("${mq.topicname}")
     private String topicName;
+
+    @Autowired
+    private ItemMapper itemMapper;
 
     @Autowired
     private ItemStockMapper itemStockMapper;
@@ -73,7 +78,11 @@ public class MqConsumer {
                 Map<String,Object> map = JSON.parseObject(msgString, Map.class);
                 Integer itemId = (Integer) map.get("itemId");
                 Integer amount = (Integer) map.get("amount");
+                //更新数据库库存
                 int decrease = itemStockMapper.updateStockByItemId(itemId, amount);
+                //更新商品销量
+                int increaseSales = itemMapper.increaseSales(itemId, amount);
+
                 //如果操作失败，我们选择的体系就是ni
 
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;

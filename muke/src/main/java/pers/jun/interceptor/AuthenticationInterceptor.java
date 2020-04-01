@@ -77,23 +77,26 @@ public class AuthenticationInterceptor implements HandlerInterceptor  {
         //从Http请求中获取token
         String token = request.getHeader("Authorization");
         //如果不是映射到方法直接通过
-        if(!(handler instanceof HandlerMethod))
+        if(!(handler instanceof HandlerMethod)) {
             return true;
+        }
         HandlerMethod handlerMethod = (HandlerMethod)handler;
         Method method = handlerMethod.getMethod();
         //检查是否有passtoken注释，有则跳过
         if (method.isAnnotationPresent(PassToken.class)) {
             PassToken passToken = method.getAnnotation(PassToken.class);
-            if(passToken.required())
+            if(passToken.required()) {
                 return true;
+            }
         }
 
         //检查有没有需要登陆的注解
         if (method.isAnnotationPresent(UserLoginToken.class)) {
             //UserLoginToken userLoginToken = method.getAnnotation(UserLoginToken.class);
             //执行认证
-            if(StringUtils.isBlank(token))
+            if(StringUtils.isBlank(token)) {
                 throw new BusinessException(EmBusinessError.USER_NOT_LOGIN,"无token，请重新登录！");
+            }
             // 从redis得到usermodel
             UserModel userModel = (UserModel) redisTemplate.opsForValue().get(token);
             userModelByToken = userModel;

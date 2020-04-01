@@ -10,6 +10,7 @@
  */
 package pers.jun.service;
 
+import pers.jun.error.BusinessException;
 import pers.jun.service.model.PromoModel;
 
 import java.util.List;
@@ -26,8 +27,25 @@ public interface PromoService {
 
     PromoModel getPromoByItemId(Integer itemId);
 
+    /**
+     * 查询所有活动中的商品或者查询指定数量处于活动中的商品
+     * @return
+     */
     List<PromoModel> getPromoItems();
 
-    // 发布活动商品
-    void publishPromo(Integer promoId);
+    /**
+     * 发布活动商品
+     * @param promoId
+     * @throws BusinessException
+     */
+    void publishPromo(Integer promoId) throws BusinessException;
+
+    /**
+     * 生成秒杀令牌
+     * @param promoId
+     * @param userId
+     * @param itemId
+     * @return
+     */
+    String generateSecondKillToken(Integer promoId,Integer userId,Integer itemId);
 }

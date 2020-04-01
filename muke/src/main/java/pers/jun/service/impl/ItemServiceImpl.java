@@ -14,6 +14,7 @@ import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.util.CollectionUtils;
 import pers.jun.controller.viewObject.ItemVo;
@@ -181,6 +182,7 @@ public class ItemServiceImpl implements ItemService {
     /**
      * 活动中的所有商品
      */
+    @Override
     public Page<ItemModel> getPromoItems(Integer page, Integer size, String sort, String priceGt, String priceLte) {
         Page<Item> itemList = null;
         // 价格从低到高排序（sort=1）
@@ -204,6 +206,7 @@ public class ItemServiceImpl implements ItemService {
     /**
      * 通过分类查找
      */
+    @Override
     public List<ItemModel> getByCategory(Integer categoryId) {
         List<Item> itemList = itemMapper.selectByCategory(categoryId);
         List<ItemModel> itemModelList = converToItemModelList(itemList);
@@ -213,6 +216,7 @@ public class ItemServiceImpl implements ItemService {
     /**
      * 通过id查找
      */
+    @Override
     public ItemModel getById(Integer id) {
         Item item = itemMapper.selectByPrimaryKey(id);
         if(item == null){
@@ -239,20 +243,19 @@ public class ItemServiceImpl implements ItemService {
     /**
      * 从缓存查商品详情
      */
+    @Override
     public ItemModel getByIdIncache(Integer id) {
-        ItemModel itemModel = (ItemModel)redisTemplate.opsForValue().get("item_validate_id"+id);
+        ItemModel itemModel = (ItemModel)redisTemplate.opsForValue().get("item_validate_id_"+id);
         if (itemModel == null) {
             itemModel = this.getById(id);
             redisTemplate.opsForValue().set("item_validate_id_"+id,itemModel);
-            redisTemplate.expire("item_validate_id"+id,10, TimeUnit.MINUTES);
+            redisTemplate.expire("item_validate_id_"+id,10, TimeUnit.MINUTES);
         }
         return itemModel;
     }
 
     /**
      * 得到名称和活动（订单展示）
-     * @param id
-     * @return
      */
     public ItemModel getNameAndPromo(Integer id) {
         Item item = itemMapper.selectByPrimaryKey(id);
@@ -284,34 +287,42 @@ public class ItemServiceImpl implements ItemService {
     //    return false;
     //}
 
+    //@Override
+    //@Transactional
+    //public boolean decreaseStock(List<OrderItemModel> orderItemModels) {
+    //    int affectLine = stockMapper.updateByItemId(orderItemModels);
+    //    return affectLine > 0;
+    //
+    //}
+
     @Override
-    @Transactional
-    public boolean decreaseStock(List<OrderItemModel> orderItemModels) {
-        int affectLine = stockMapper.updateByItemId(orderItemModels);
+    public boolean decreaseStock(Integer itemId,Integer amount) {
+        int affectLine = stockMapper.updateStockByItemId(itemId,amount);
         return affectLine > 0;
 
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean decreaseStockIncache(Integer itemId,Integer amount) {
         //返回值result表示操作后的值
-        Long result = redisTemplate.opsForValue().increment("promo_item_id_" + itemId, amount * -1);
+        Long result = redisTemplate.opsForValue().increment("promo_itemStock_id_" + itemId, amount * -1);
         if(result > 0){
             //boolean reduceStock = mqProducer.asyncReduceStock(itemId, amount);
             //if (!reduceStock) {
-            //    redisTemplate.opsForValue().increment("promo_item_id_" + itemId, amount);
+            //    redisTemplate.opsForValue().increment("promo_itemStock_id_" + itemId, amount);
             //    return false;
             //}
             return true;
         } else if(result == 0){
             // 当库存为0的时候，直接返回false
-            redisTemplate.opsForValue().set("promo_item_id_over_" + itemId,true);
+            redisTemplate.opsForValue().set("promo_itemStock_id_over_" + itemId,true);
             return true;
         }
         //若操作后返回的result小于0，库布不足，将减掉的库存加回去，返回错误
-        else
+        else {
             increaseStock(itemId,amount);
+        }
         return false;
     }
 
@@ -325,14 +336,16 @@ public class ItemServiceImpl implements ItemService {
     /**
      * 回滚库存
      */
+    @Override
     public boolean increaseStock(Integer itemId, Integer amount) {
-        redisTemplate.opsForValue().increment("promo_item_id_"+itemId, amount);
+        redisTemplate.opsForValue().increment("promo_itemStock_id_"+itemId, amount);
         return true;
     }
 
     /**
      * 更新销量
      */
+    @Override
     public boolean increaseSales(Integer id, Integer amount) {
         int affectLine = itemMapper.increaseSales(id, amount);
         if(affectLine > 0){
@@ -345,6 +358,7 @@ public class ItemServiceImpl implements ItemService {
      * 查询热门商品
      * @return
      */
+    @Override
     public List<ItemModel> getPopular(int count) {
         List<Item> list = itemMapper.getPopular(count);
         List<ItemModel> itemModels = converToItemModelList(list);
@@ -352,6 +366,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     //根据活动进行查询商品
+    @Override
     public List<ItemModel> getPromoHotItems() {
         //查询promo表中处于活动中的商品
         List<PromoModel> promoItems = promoService.getPromoItems();
@@ -378,6 +393,7 @@ public class ItemServiceImpl implements ItemService {
      * 查询图片轮播商品
      * @return
      */
+    @Override
     public List<ItemScroll> getHomeScroll() {
         List<ItemScroll> scrollList = itemScrollMapper.getList();
         return scrollList;
@@ -386,6 +402,7 @@ public class ItemServiceImpl implements ItemService {
     /**
      * 初始化库存流水
      */
+    @Override
     @Transactional
     public String initStockLog(Integer itemId, Integer amount) {
         StockLog stockLog = new StockLog();

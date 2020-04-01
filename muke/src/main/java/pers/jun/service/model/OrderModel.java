@@ -34,28 +34,44 @@ import java.util.List;
 @NoArgsConstructor
 public class OrderModel {
 
-    //订单id
+    /**
+     * 订单id
+     */
     private String id;
 
-    //用户id
+    /**
+     * 用户id
+     */
     private Integer userId;
 
-    //下单商品 orderItems
+    /**
+     * 下单商品 orderItems
+     */
     private List<OrderItemModel> orderItems;
 
-    //订单总价格(此处设置为Double，因为查询所有订单时存在与这个类对的mapper操作
+    /**
+     * 订单总价格(此处设置为Double，因为查询所有订单时存在与这个类对的mapper操作
+     */
     private Double totalPrice;
 
-    //下单时间
+    /**
+     * 下单时间
+     */
     private Date createDate;
 
-    //订单完成时间
+    /**
+     * 订单完成时间
+     */
     private Date finishDate;
 
-    //订单状态 1表示已付款 2表示已发货 3表示收获 4表示已售后退货 5表示完成 默认为0
+    /**
+     * 订单状态 1表示已付款 2表示已发货 3表示收获 4表示已售后退货 5表示完成 默认为0
+     */
     private Integer status = 0;
 
-    //订单地址id
+    /**
+     * 订单地址id
+     */
     private Integer address;
 
     ////下单数量

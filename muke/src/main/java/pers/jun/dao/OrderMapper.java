@@ -58,10 +58,14 @@ public interface OrderMapper {
      */
     int updateByPrimaryKey(Order record);
 
-    // 查询所有用户订单
-    Page<OrderModel> selectAll(Integer userId);
+    /**
+     * 查询所有用户订单
+     */
+    Page<Order> selectAll(Integer userId);
 
-    // 查询用户订单详情及订单项
+    /**
+     * 查询用户订单详情及订单项
+     */
     OrderModel getOrderAndDetail(String orderId);
 
 }

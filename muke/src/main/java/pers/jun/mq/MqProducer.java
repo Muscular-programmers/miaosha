@@ -39,6 +39,9 @@ import java.util.Map;
  *
  * @author 俊哥
  * @create 2020/1/2
+ * 通过TransactionMQProducer发送消息，broker确实可以收到这个消息，但是这个消息的状态不是可被消费的状态，
+ * 而实protect，在这个状态下会去执行客户端的executeLocalTransaction，若发送消息的返回值是COMMIT则下单成功，
+ * 若为UNKNOWN，则会回调函数checkLocalTransaction；
  * @since 1.0.0
  */
 @Component
@@ -66,13 +69,19 @@ public class MqProducer {
     @PostConstruct
     public void init() throws MQClientException {
         // producer的初始化
+        //设置消息生产者组
         producer = new DefaultMQProducer("producer_group");
+        //指定nameServe的地址
         producer.setNamesrvAddr(nameAddr);
+        //初始化producer，整个应用生命周期内只需要初始化一次
         producer.start();
 
         // 事务型producer
+        //设置消息生产者组
         transactionMQProducer = new TransactionMQProducer("transaction_producer_group");
+        //指定nameServe的地址
         transactionMQProducer.setNamesrvAddr(nameAddr);
+        //初始化producer，整个应用生命周期内只需要初始化一次
         transactionMQProducer.start();
 
         //设置transactionListener
@@ -90,7 +99,7 @@ public class MqProducer {
                     orderService.createOrderPromo(orderModel,stockLogId);
                 } catch (BusinessException e) {
                     e.printStackTrace();
-                    //如果操作失败，将库存流水状态更新为3，回滚缓存中的数量
+                    //如果操作失败，将库存流水状态更新为3，回滚缓存中的库存数量
                     itemService.increaseStock(orderModel.getOrderItems().get(0).getItemId(),orderModel.getOrderItems().get(0).getAmount());
 
                     StockLog stockLog = stockLogMapper.selectByPrimaryKey(stockLogId);
@@ -112,12 +121,14 @@ public class MqProducer {
 
                 StockLog stockLog = stockLogMapper.selectByPrimaryKey(stockLogId);
                 //判空或者状态为1，即操作还未完成
-                if(stockLog == null || stockLog.getStatus() == 1)
+                if(stockLog == null || stockLog.getStatus() == 1) {
                     //return LocalTransactionState.UNKNOW;
                     return LocalTransactionState.ROLLBACK_MESSAGE;
+                }
                 //如果状态为2，即下单完成
-                if(stockLog.getStatus() == 2)
+                if(stockLog.getStatus() == 2) {
                     return LocalTransactionState.COMMIT_MESSAGE;
+                }
                 return LocalTransactionState.ROLLBACK_MESSAGE;
             }
         });
@@ -135,6 +146,7 @@ public class MqProducer {
         map.put("itemId",itemId);
         map.put("amount",amount);
         map.put("stockLogId",stockLogId);
+        //创建一条消息对象，指定主题，标签和消息内容
         Message message = new Message(topicName,"increase", JSON.toJSON(map).toString().getBytes(Charset.forName("UTF-8")));
 
         Map<String,Object> argsMap = new HashMap<>();

@@ -70,6 +70,9 @@ public class ItemVo {
     //秒杀结束时间
     private String endDate;
 
+    //服务器当前时间
+
+
     //前端需要
     private int limitNum = 10;
 

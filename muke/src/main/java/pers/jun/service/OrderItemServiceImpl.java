@@ -43,6 +43,7 @@ public class OrderItemServiceImpl implements OrderItemService {
     @Autowired
     private ItemMapper itemMapper;
 
+    @Override
     public int insertOrderItem(OrderItem orderItem) {
         return orderItemMapper.insertSelective(orderItem);
     }
@@ -50,6 +51,7 @@ public class OrderItemServiceImpl implements OrderItemService {
     /**
      * 根据订单id查询所有订单商品
      */
+    @Override
     public List<OrderItem> getItemByOrderId(String orderId) {
         List<OrderItem> orderItems = orderItemMapper.getItemByOrderId(orderId);
         //List<OrderItemVo> orderItemVos = convertToVoList(orderItems);

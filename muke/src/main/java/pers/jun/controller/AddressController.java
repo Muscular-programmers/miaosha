@@ -42,7 +42,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/address")
-@Api(tags = "用户地址管理模块")
+@Api(tags = "AddressController")
 @CrossOrigin(allowCredentials = "true",allowedHeaders = "*")//解决跨域请求报错的问题 视频3-8
 public class AddressController {
 

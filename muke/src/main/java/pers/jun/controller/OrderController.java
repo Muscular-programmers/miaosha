@@ -49,17 +49,20 @@ import org.joda.time.format.DateTimeFormat;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import pers.jun.util.Captcha;
 import pers.jun.util.JwtUtil;
 
+import javax.annotation.PostConstruct;
+import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletRequest;
-import java.lang.annotation.Repeatable;
-import java.lang.reflect.Type;
+import javax.servlet.http.HttpServletResponse;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * 〈一句话功能简述〉<br>
@@ -79,12 +82,6 @@ public class OrderController extends BaseController {
     private OrderService orderService;
 
     @Autowired
-    private HttpServletRequest httpServletRequest;
-
-    @Autowired
-    private ItemMapper itemMapper;
-
-    @Autowired
     private AddressService addressService;
 
     @Autowired
@@ -99,22 +96,86 @@ public class OrderController extends BaseController {
     @Autowired
     private RedisTemplate redisTemplate;
 
+    private ExecutorService executorService;
+
+
+    /**
+     * 用于生成带四位数字验证码的图片
+     * https://www.jianshu.com/p/009914797af2
+     */
+    @UserLoginToken
+    @GetMapping(value = "/generateVerifyCode")
+    @ApiOperation(value = "生成验证码")
+    public void generateVerifyCode(HttpServletResponse response) throws Exception {
+        //判断用户是否登录
+        UserModel userModel = checkUserLogin();
+
+        response.setDateHeader("Expires", 0);
+        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+        response.addHeader("Cache-Control", "post-check=0, pre-check=0");
+        response.setHeader("Pragma", "no-cache");
+        response.setContentType("image/jpeg");
+
+        OutputStream os = response.getOutputStream();
+        //返回验证码和图片的map
+        Map<String,Object> map = Captcha.getImageCode(86, 37, os);
+
+        System.out.println("验证码为：" + map.get("code"));
+        //验证码存入redis
+        redisTemplate.opsForValue().set("verify_code_userId_" + userModel.getId(),map.get("code"));
+        //设置五分钟哦的过期时间
+        redisTemplate.expire("verify_code_userId_" + userModel.getId(),5,TimeUnit.MINUTES);
+        ImageIO.write((BufferedImage) map.get("image"),"jpeg",response.getOutputStream());
+
+        //String simpleCaptcha = "simpleCaptcha";
+        //request.getSession().setAttribute(simpleCaptcha, map.get("strEnsure").toString().toLowerCase());
+        //request.getSession().setAttribute("codeTime",new Date().getTime());
+        //try {
+        //    ImageIO.write((BufferedImage) map.get("image"), "jpg", os);
+        //} catch (IOException e) {
+        //    return "";
+        //}   finally {
+        //    if (os != null) {
+        //        os.flush();
+        //        os.close();
+        //    }
+        //}
+    }
+
+    @PostConstruct
+    public void init() {
+        //https://www.jianshu.com/p/c41e942bcd64
+        executorService = Executors.newFixedThreadPool(20);
+    }
+
+
     /**
      * 生成秒杀令牌
      */
     @UserLoginToken
     @PostMapping(value = "/generateToken")
-    @ApiOperation(value = "创建订单")
+    @ApiOperation(value = "生成秒杀令牌")
     public Object generateToken(@RequestParam(name="itemId")Integer itemId,
-                                @RequestParam(name="promoId")Integer promoId) throws BusinessException {
+                                @RequestParam(name="promoId")Integer promoId,
+                                @RequestParam(name = "verifyCode")String verifyCode) throws BusinessException {
         //判断用户是否登录
         UserModel userModel = checkUserLogin();
+
+        //验证验证码
+        String redisVerifyCode = (String) redisTemplate.opsForValue().get("verify_code_userId_" + userModel.getId());
+        if(redisVerifyCode == null){
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"验证码非法");
+        }
+        if (!StringUtils.equals(verifyCode, redisVerifyCode)) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"验证码错误");
+        }
 
         //生成秒杀令牌
         String secondKillToken = promoService.generateSecondKillToken(promoId, userModel.getId(), itemId);
 
-        if(secondKillToken == null)
-            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"秒杀令牌生成失败");
+        if(secondKillToken == null) {
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"无法生成秒杀令牌，交易失败");
+        }
 
         return CommonReturnType.create(secondKillToken);
     }
@@ -128,8 +189,9 @@ public class OrderController extends BaseController {
     public Object createOrder(@RequestBody OrderModel orderModel) throws BusinessException {
         //判断用户是否登录
         checkUserLogin();
-        if(orderModel == null)
+        if(orderModel == null) {
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        }
 
         orderService.createOrder(orderModel);
 
@@ -142,7 +204,7 @@ public class OrderController extends BaseController {
         //    //redisTemplate.opsForValue().get("promo_token_"+promo)
         //
         //    // 先判断该商品是否已卖完，若已卖完直接返回
-        //    if (redisTemplate.hasKey("promo_item_id_over_"+orderItems.get(0).getItemId())) {
+        //    if (redisTemplate.hasKey("promo_itemStock_id_over_"+orderItems.get(0).getItemId())) {
         //        throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
         //    }
         //
@@ -164,8 +226,13 @@ public class OrderController extends BaseController {
     @UserLoginToken
     @PostMapping(value = "/createPromo")
     @ApiOperation(value = "创建秒杀订单")
-    public Object createPromo(@RequestBody OrderModel orderModel,
-                              @RequestParam(name = "promoToken")String promoToken) throws BusinessException {
+    public Object createPromo(
+            @RequestBody OrderModel orderModel,
+                              @RequestParam(name = "promoToken")String promoToken
+            //                  @RequestParam(name = "itemId")Integer itemId,
+            //                  @RequestParam(name = "promoId")Integer promoId,
+            //                  @RequestParam(name = "amount")Integer amount
+    ) throws BusinessException {
         //判断用户是否登录
         UserModel userModel = checkUserLogin();
 
@@ -173,6 +240,7 @@ public class OrderController extends BaseController {
         Integer itemId = itemModel.getItemId();
         Integer promoId = itemModel.getPromoId();
         Integer amount = itemModel.getAmount();
+
         Integer userId = userModel.getId();
         //校验秒杀令牌是否正确
         String inRedisPromoToken = (String) redisTemplate.opsForValue().get("promo_token_"+promoId+"_userId_"+userId+"_itemId_"+itemId);
@@ -184,19 +252,31 @@ public class OrderController extends BaseController {
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR,"秒杀令牌校验失败");
         }
 
-        // 先判断该商品是否已售罄，若已卖完直接返回
-        if (redisTemplate.hasKey("promo_item_id_over_"+itemId)) {
-            throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
-        }
+        //同步调用线程池的submit方法
+        //拥塞窗口为20的等待队列，用来队列化泄洪
+        Future<Object> future = executorService.submit(new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+                //在下单之前，加入库存流水初始化
+                String stockLog = itemService.initStockLog(itemId, amount);
 
-        //orderService.createOrderPromo(orderModel);
-        //在下单之前，加入库存流水初始化
-        String stockLog = itemService.initStockLog(itemId, amount);
-
-        //再去完成对应的下单事务型消息机制
-        boolean result = mqProducer.transactionAsyncReduceStock(orderModel, stockLog);
-        if(!result) {
-            throw new BusinessException(EmBusinessError.MQ_SEND_FAIL,"下单失败，库存不足或同步消息失败");
+                //再去完成对应的下单事务型消息机制
+                if (!mqProducer.transactionAsyncReduceStock(orderModel, stockLog)) {
+                    throw new BusinessException(EmBusinessError.MQ_SEND_FAIL, "下单失败，库存不足或同步消息失败");
+                }
+                return null;
+            }
+        });
+        //当我们提交一个Callable任务后，我们会同时获得一个Future对象，然后，我们在主线程某个时刻调用Future对象
+        // 的get()方法，就可以获得异步执行的结果。在调用get()时，如果异步任务已经完成，我们就直接获得结果。
+        // 如果异步任务还没有完成，那么get()会阻塞，直到任务完成后才返回结果。
+        //https://www.liaoxuefeng.com/wiki/1252599548343744/1306581155184674
+        try {
+            future.get();
+        } catch (InterruptedException e) {
+            throw new BusinessException(EmBusinessError.UNKNOWN_ERROR);
+        } catch (ExecutionException e) {
+            throw new BusinessException(EmBusinessError.UNKNOWN_ERROR);
         }
 
         return CommonReturnType.create(null);
@@ -316,8 +396,9 @@ public class OrderController extends BaseController {
      */
     private OrderVo converToOderVo(OrderModel orderModel) throws BusinessException{
         //判空
-        if(orderModel == null)
+        if(orderModel == null) {
             return null;
+        }
         OrderVo orderVo = new OrderVo();
         BeanUtils.copyProperties(orderModel,orderVo);
 

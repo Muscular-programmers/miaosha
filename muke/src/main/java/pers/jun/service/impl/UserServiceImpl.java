@@ -10,6 +10,7 @@
  */
 package pers.jun.service.impl;
 
+import org.springframework.beans.BeansException;
 import org.springframework.data.redis.core.RedisTemplate;
 import pers.jun.dao.UserMapper;
 import pers.jun.dao.UserPasswordMapper;
@@ -28,6 +29,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -70,7 +72,7 @@ public class UserServiceImpl implements UserService {
     /**
      * 从缓存中查询用户信息
      */
-    public UserModel getUserByIdIncace(Integer userId) {
+    public UserModel getUserByIdIncache(Integer userId) {
         UserModel userModel = (UserModel)redisTemplate.opsForValue().get("user_validate_id"+userId);
         if (userModel == null) {
             userModel = this.getUserById(userId);
@@ -191,11 +193,12 @@ public class UserServiceImpl implements UserService {
      * @param user
      * @return
      */
-    private UserModel convertFromUser(User user,UserPassword password){
+    private UserModel convertFromUser(User user,UserPassword password) {
         if(user == null)
             return null;
         UserModel userModel = new UserModel();
         BeanUtils.copyProperties(user,userModel);
+        //org.apache.commons.beanutils.BeanUtils.copyProperties(userModel,user);
         if(password != null){
             userModel.setPassword(password.getPassword());
         }

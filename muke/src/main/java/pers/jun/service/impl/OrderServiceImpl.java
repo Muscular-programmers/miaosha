@@ -19,10 +19,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.transaction.support.TransactionSynchronizationAdapter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pers.jun.controller.viewObject.OrderVo;
-import pers.jun.dao.OrderItemMapper;
-import pers.jun.dao.OrderMapper;
-import pers.jun.dao.SequenceMapper;
-import pers.jun.dao.StockLogMapper;
+import pers.jun.dao.*;
 import pers.jun.error.BusinessException;
 import pers.jun.error.EmBusinessError;
 import pers.jun.pojo.*;
@@ -78,10 +75,10 @@ public class OrderServiceImpl implements OrderService {
     private PromoService promoService;
 
     @Autowired
-    private OrderItemMapper orderItemMapper;
+    private StockLogMapper stockLogMapper;
 
     @Autowired
-    private StockLogMapper stockLogMapper;
+    private ItemStockMapper itemStockMapper;
 
 
     /**
@@ -91,7 +88,6 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void createOrder(OrderModel orderModel) throws BusinessException {
-        System.out.println(orderModel);
 
         // 用户合法性验证
         UserModel userModel = userService.getUserByIdIncache(orderModel.getUserId());
@@ -115,7 +111,6 @@ public class OrderServiceImpl implements OrderService {
         // 交易流水号，生成id
         String generateOrderNo = generateOrderNo();
         orderModel.setId(generateOrderNo);
-        System.out.println(convertToOrder(orderModel));
 
         int insert = orderMapper.insertSelective(convertToOrder(orderModel));
         if(insert < 1) {
@@ -125,12 +120,19 @@ public class OrderServiceImpl implements OrderService {
         // 3.减库存 AND 添加订单item AND 更新商品销量 AND 从购物车删除
 
         // 3.减库存
-        boolean decreaseResult = itemService.decreaseStock(orderItemModels);
-        if(!decreaseResult) {
-            throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
-        }
+        //boolean decreaseResult = itemService.decreaseStock(orderItemModels);
+        //if(!decreaseResult) {
+        //    throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
+        //}
 
         for (OrderItemModel orderItem : orderItemModels) {
+            //3.扣减库存
+            Integer stock = itemStockMapper.selectByItemId(orderItem.getItemId()).getStock();
+            if (stock < orderItem.getAmount()) {
+                throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
+            }
+            itemService.decreaseStock(orderItem.getItemId(), orderItem.getAmount());
+
             // 设置所属订单id
             orderItem.setOrderId(generateOrderNo);
             // 根据商品id得到商品，判断商品是否处于活动当中
@@ -186,7 +188,7 @@ public class OrderServiceImpl implements OrderService {
         //    throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"活动信息不正确");
         //
         ////获取订单中这个商品的活动信息，如果这个商品没有活动或者活动状态不为“正在活动中”则不合法
-        PromoModel promoByItemId = promoService.getPromoByItemId(itemId);
+        //PromoModel promoByItemId = promoService.getPromoByItemId(itemId);
         //if(promoByItemId == null || promoByItemId.getStatus() != 2)
         //    throw new BusinessException(EmBusinessError.ORDER_UNKOWN_ERROR,"活动信息不正确");
 
@@ -199,7 +201,7 @@ public class OrderServiceImpl implements OrderService {
         //设置订单默认状态和入库时间
         orderModel.setStatus(0);
         orderModel.setCreateDate(new Date());
-
+        orderModel.setFinishDate(new Date());
         // 交易流水号，生成id
         String generateOrderNo = generateOrderNo();
         orderModel.setId(generateOrderNo);
@@ -216,16 +218,16 @@ public class OrderServiceImpl implements OrderService {
         orderItemModel.setOrderId(generateOrderNo);
 
         // 设置价格
-        orderItemModel.setPrice(promoByItemId.getPromoItemPrice().doubleValue());
+        orderItemModel.setPrice(orderModel.getTotalPrice().doubleValue());
 
         // 4.添加订单item
         orderItemService.insertOrderItem(converrToOrderItem(orderItemModel));
 
         // 5.更新商品销量
-        itemService.increaseSales(itemId, amount);
+        //itemService.increaseSales(itemId, amount);
 
         //if(true)
-        //throw new BusinessException(EmBusinessError.UNKNOWN_ERROR);
+        //    throw new BusinessException(EmBusinessError.UNKNOWN_ERROR);
 
         // 6.将库存流水状态更新为2，即下单成功
         StockLog stockLog = stockLogMapper.selectByPrimaryKey(stockLogId);

@@ -33,7 +33,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/category")
-@Api(tags = "商品分类管理")
+@Api(tags = "CategoryController")
 @CrossOrigin(allowCredentials = "true",allowedHeaders = "*")//解决跨域请求报错的问题 视频3-8
 public class CategoryController extends BaseController {
 

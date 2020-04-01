@@ -49,7 +49,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/cart")
-@Api(tags = "购物车管理模块")
+@Api(tags = "CartController")
 @CrossOrigin(allowCredentials = "true",allowedHeaders = "*")//解决跨域请求报错的问题 视频3-8
 public class CartController extends BaseController{
 
@@ -172,7 +172,7 @@ public class CartController extends BaseController{
         BeanUtils.copyProperties(cartModel,cartVo);
         cartVo.setItemId(cartModel.getItem().getId());
         cartVo.setTitle(cartModel.getItem().getTitle());
-        cartVo.setImgUrl(cartModel.getItem().getImgUrl().split(",")[0]);
+        cartVo.setImgUrl(cartModel.getItem().getImgUrl().split("\\*\\*\\*")[0]);
         cartVo.setPrice(new BigDecimal(cartModel.getItem().getPrice()));
         if (cartModel.getPromoModel() != null) {
             cartVo.setPromoId(cartModel.getPromoModel().getId());

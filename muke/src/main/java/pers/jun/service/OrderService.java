@@ -26,16 +26,28 @@ import java.util.List;
  */
 public interface OrderService {
 
+    /**
+     * 创建订单，下单普通商品
+     */
     void createOrder(OrderModel orderModel) throws BusinessException;
 
+    /**
+     * 创建订单，下单活动商品
+     */
     void createOrderPromo(OrderModel orderModel,String stockLogId) throws BusinessException;
 
-    // 查询所有订单
+    /**
+     * 查询所有订单
+     */
     Page<OrderModel> getList(Integer userId, Integer page, Integer size) throws BusinessException;
 
-    // 根据id查询订单
+    /**
+     * 根据id查询订单
+     */
     OrderModel orderById(String orderId) throws BusinessException;
 
-    // 删除订单
+    /**
+     * 删除订单
+     */
     void delOrder(String orderId) throws BusinessException;
 }

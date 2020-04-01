@@ -26,7 +26,9 @@ import java.util.List;
  */
 public interface OrderItemService {
 
-    //添加订单商品
+    /**
+     * 添加订单商品
+     */
     int insertOrderItem(OrderItem orderItem);
 
     List<OrderItem> getItemByOrderId(String orderId);

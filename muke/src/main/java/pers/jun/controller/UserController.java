@@ -47,7 +47,7 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/user")
-@Api(tags = "用户管理模块")
+@Api(tags = "UserController")
 @CrossOrigin(allowCredentials = "true",allowedHeaders = "*")//解决跨域请求报错的问题 视频3-8
 public class UserController extends BaseController {
 
@@ -111,19 +111,19 @@ public class UserController extends BaseController {
     }
 
 
-    /**
-     * checkLogin
-     */
-    @UserLoginToken
-    @PostMapping("/checkLogin")
-    @ApiOperation(value = "checkLogin")
-    public Object checkLogin() throws BusinessException {
-        UserModel userModel = AuthenticationInterceptor.userModelByToken;
-        if(userModel == null)
-            throw new BusinessException(EmBusinessError.USER_NOT_LOGIN);
-        UserVo userVo = converFromUserModel(userModel);
-        return CommonReturnType.create(userVo);
-    }
+    ///**
+    // * checkLogin
+    // */
+    //@UserLoginToken
+    //@PostMapping("/checkLogin")
+    //@ApiOperation(value = "checkLogin")
+    //public Object checkLogin() throws BusinessException {
+    //    UserModel userModel = AuthenticationInterceptor.userModelByToken;
+    //    if(userModel == null)
+    //        throw new BusinessException(EmBusinessError.USER_NOT_LOGIN);
+    //    UserVo userVo = converFromUserModel(userModel);
+    //    return CommonReturnType.create(userVo);
+    //}
 
     /**
      * 重新生成token
@@ -144,6 +144,21 @@ public class UserController extends BaseController {
 
         //将新的token返回
         return CommonReturnType.create(token);
+    }
+
+    /**
+     * 通过token获取用户信息
+     */
+    @UserLoginToken
+    @PostMapping("/getInfo")
+    @ApiOperation(value = "getInfo")
+    public Object getInfo() throws BusinessException {
+        UserModel userModel = AuthenticationInterceptor.userModelByToken;
+        if(userModel == null) {
+            throw new BusinessException(EmBusinessError.USER_NOT_LOGIN);
+        }
+        UserVo userVo = converFromUserModel(userModel);
+        return CommonReturnType.create(userVo);
     }
 
     /**

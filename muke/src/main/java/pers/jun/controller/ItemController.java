@@ -11,13 +11,11 @@
 package pers.jun.controller;
 
 import com.github.pagehelper.Page;
-import com.github.pagehelper.PageInfo;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
-import io.swagger.models.auth.In;
-import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import pers.jun.controller.viewObject.ItemVo;
 import pers.jun.error.BusinessException;
@@ -28,7 +26,6 @@ import pers.jun.service.ItemService;
 import pers.jun.service.PromoService;
 import pers.jun.service.model.ItemModel;
 import org.joda.time.format.DateTimeFormat;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,7 +43,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/item")
-@Api(tags = "商品管理模块")
+@Api(tags = "ItemController")
 @CrossOrigin(allowCredentials = "true",allowedHeaders = "*")//解决跨域请求报错的问题 视频3-8
 public class ItemController extends BaseController {
 
@@ -168,22 +165,24 @@ public class ItemController extends BaseController {
         itemModel = (ItemModel) cacheService.getFromCache("item_"+id);
         if (itemModel == null) {
             // 如果本地缓存为空，从redis缓存中查找
-            itemModel = (ItemModel) redisTemplate.opsForValue().get("item_"+id);
+            itemModel = (ItemModel) redisTemplate.opsForValue().get("item_validate_id_"+id);
             if (itemModel == null) {
                 // 如果redis缓存中没有，调用下层service
                 itemModel = itemService.getById(id);
-                if(itemModel == null)
+                if(itemModel == null) {
                     throw new BusinessException(EmBusinessError.UNKNOWN_ERROR,"商品id不合法，不存在该商品");
+                }
                 // 存入redis缓存
-                redisTemplate.opsForValue().set("item_"+id,itemModel);
+                redisTemplate.opsForValue().set("item_validate_id_"+id,itemModel);
                 // 设置默认过期时间
-                redisTemplate.expire("item_"+id,10, TimeUnit.MINUTES);
+                redisTemplate.expire("item_validate_id_"+id,10, TimeUnit.MINUTES);
             }
             //将得到的itemModel存入本地缓存
             cacheService.setCommonCache("item_"+id,itemModel);
         }
 
         ItemVo itemVo = convertToItemVO(itemModel);
+        itemVo.setImgUrl(itemModel.getImgUrl().split("\\*\\*\\*")[0]);
 
         return CommonReturnType.create(itemVo);
     }
@@ -208,12 +207,13 @@ public class ItemController extends BaseController {
      * bean转换
      */
     private ItemVo convertToItemVO(ItemModel itemModel){
-        if(itemModel == null)
+        if(itemModel == null) {
             return null;
+        }
         ItemVo itemVo = new ItemVo();
         BeanUtils.copyProperties(itemModel,itemVo);
         itemVo.setItemId(itemModel.getItemId());
-        List<String> modelImgList = Arrays.asList(itemModel.getImgUrl().split(","));
+        List<String> modelImgList = Arrays.asList(itemModel.getImgUrl().split("\\*\\*\\*"));
         //设置封面图片为第一张
         itemVo.setImgUrl(modelImgList.get(0));
         //设置所有图片，按照“，”分割
@@ -245,11 +245,14 @@ public class ItemController extends BaseController {
     }
 
     private Page<ItemVo> convertoItemVoList(Page<ItemModel> itemModelList) {
-        if(itemModelList == null)
+        if(itemModelList == null) {
             return null;
+        }
         Page<ItemVo> itemVos = new Page<>();
         for (ItemModel itemModel : itemModelList) {
-            itemVos.add(convertToItemVO(itemModel));
+            ItemVo itemVo = convertToItemVO(itemModel);
+            itemVo.setImgUrl(itemModel.getImgUrl().split("\\*\\*\\*")[0]);
+            itemVos.add(itemVo);
         }
         BeanUtils.copyProperties(itemModelList,itemVos);
         return itemVos;

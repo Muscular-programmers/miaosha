@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/goods")
-@Api(tags = "商城主页")
+@Api(tags = "HomeController")
 @CrossOrigin(allowCredentials = "true",allowedHeaders = "*")//解决跨域请求报错的问题 视频3-8
 public class HomeController extends BaseController{
 
@@ -132,11 +132,13 @@ public class HomeController extends BaseController{
             return null;
         ItemVo itemVo = new ItemVo();
         BeanUtils.copyProperties(itemModel,itemVo);
-        List<String> modelImgList = Arrays.asList(itemModel.getImgUrl().split(","));
+        itemVo.setImgUrl(itemModel.getImgUrl().split("\\*\\*\\*")[0]);
+        //List<String> modelImgList = Arrays.asList(itemModel.getImgUrl().split("\\*\\*\\*"));
         //设置封面图片为第一张
-        itemVo.setImgUrl(modelImgList.get(0));
+        //itemVo.setImgUrl(modelImgList.get(0));
         //设置所有图片，按照“，”分割
-        itemVo.setImgUrls(modelImgList);
+        //itemVo.setImgUrls(modelImgList);
+
         if(itemModel.getPromoModel() != null){
             //如果存在有未结束的活动
             itemVo.setStatus(itemModel.getPromoModel().getStatus());
